@@ -1,0 +1,45 @@
+# ── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build output ─────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ── Secrets — never commit ───────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# ── Tooling / platform ───────────────────────────────────────────────────────
+.vercel
+.turbo
+coverage/
+playwright-report/
+test-results/
+
+# ── Editor / OS ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ── Backend ──────────────────────────────────────────────────────────────────
+# Drizzle keeps generated SQL under drizzle/ — that IS committed, it is the
+# migration history. Only its journal scratch files are not.
+.drizzle-tmp/
+
+# Stray Next.js output if a build is run from the wrong directory.
+.next/

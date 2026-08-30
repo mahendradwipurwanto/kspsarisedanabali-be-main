@@ -1,0 +1,10 @@
+# Keep the serverless bundle to what actually runs in production.
+# Migrations and the seed are run deliberately from a workstation or CI,
+# never from a request handler.
+e2e.mjs
+drizzle.config.ts
+drizzle/
+src/db/seed.ts
+src/db/reset-admin.ts
+src/db/migrate.ts
+**/*.test.ts
