@@ -15,5 +15,5 @@
       ]
     }
   ],
-  "crons": [{ "path": "/v1/public/health", "schedule": "0 */6 * * *" }]
+  "crons": [{ "path": "/v1/public/health/db", "schedule": "0 21 * * *" }]
 }

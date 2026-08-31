@@ -406,12 +406,24 @@ publicRouter.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'ksp-api', time: new Date().toISOString() })
 })
 
-/** Kept for the "did the DB actually answer?" check in deploy smoke tests. */
+/**
+ * Did the database actually answer? Used by deploy smoke tests and by the daily
+ * cron, so it must fail with a non-2xx when the link is down — a canary that
+ * always returns 200 tells the platform nothing, and the failure would only ever
+ * be visible to someone reading the response body.
+ */
 publicRouter.get(
   '/health/db',
   asyncHandler(async (_req, res) => {
     const started = Date.now()
-    const [row] = await db.select({ n: sql<number>`1::int` }).from(settings).limit(1).catch(() => [{ n: 0 }])
-    res.json({ ok: true, latencyMs: Date.now() - started, reachable: row !== undefined })
+    const reachable = await db
+      .select({ n: sql<number>`1::int` })
+      .from(settings)
+      .limit(1)
+      .then(() => true)
+      .catch(() => false)
+
+    const latencyMs = Date.now() - started
+    res.status(reachable ? 200 : 503).json({ ok: reachable, reachable, latencyMs })
   }),
 )
