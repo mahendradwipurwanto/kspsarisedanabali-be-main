@@ -1,4 +1,4 @@
-import { calculateInstallment, type RateMethod } from '@mahendradwipurwanto/ksp-contracts'
+import { calculateInstallment, type RateMethod } from '../contracts/index.js'
 import type { products } from '../db/schema.js'
 
 type Product = typeof products.$inferSelect

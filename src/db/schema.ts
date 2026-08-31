@@ -36,7 +36,7 @@ export const roles = pgTable(
     key: varchar('key', { length: 60 }).notNull(),
     name: varchar('name', { length: 80 }).notNull(),
     description: text('description'),
-    /** Permission strings from @mahendradwipurwanto/ksp-contracts. */
+    /** Permission strings from src/contracts/permissions.ts. */
     permissions: jsonb('permissions').$type<string[]>().notNull().default([]),
     /** Locked roles cannot be deleted or have their permissions emptied. */
     isLocked: boolean('is_locked').notNull().default(false),

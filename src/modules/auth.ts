@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
-import { loginSchema } from '@mahendradwipurwanto/ksp-contracts'
+import { loginSchema } from '../contracts/index.js'
 import { db, users, roles, userRoles, userBranches, refreshTokens, loginAttempts } from '../db/index.js'
 import {
   hashPassword, verifyPassword, signAccessToken, generateRefreshToken, signRefreshJwt,

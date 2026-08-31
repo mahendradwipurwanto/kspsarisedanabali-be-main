@@ -2,7 +2,7 @@ import 'dotenv/config'
 
 import { randomBytes } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
-import { SYSTEM_ROLES, type SystemRoleKey } from '@mahendradwipurwanto/ksp-contracts'
+import { SYSTEM_ROLES, type SystemRoleKey } from '../contracts/index.js'
 import { db, sqlClient } from './index.js'
 import * as t from './schema.js'
 import { hashPassword } from '../lib/auth.js'

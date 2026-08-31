@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { and, desc, eq, ilike, count } from 'drizzle-orm'
-import { presignSchema, confirmMediaSchema } from '@mahendradwipurwanto/ksp-contracts'
+import { presignSchema, confirmMediaSchema } from '../contracts/index.js'
 import { db, media, mediaFolders } from '../db/index.js'
 import { presignUpload, presignDownload, publicUrl, deleteObjects, PRIVATE_FOLDERS } from '../lib/storage.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, audit, validated, param } from '../middleware/index.js'

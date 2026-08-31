@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, count } 
 import {
   publicLeadSchema, updateLeadSchema, profilingSessionSchema, normalisePhone,
   calculateInstallment, jobApplicationSchema, type RateMethod,
-} from '@mahendradwipurwanto/ksp-contracts'
+} from '../contracts/index.js'
 import { db, leads, leadEvents, products, branches, users, profilingSessions, jobApplications, jobs } from '../db/index.js'
 import {
   asyncHandler, validate, requireAuth, requirePermission, forbidden, notFound,
@@ -46,7 +46,7 @@ publicLeadRouter.post(
   ipRateLimit(30, 300),
   validate(publicLeadSchema),
   asyncHandler(async (req, res) => {
-    const body = req.body as import('@mahendradwipurwanto/ksp-contracts').PublicLead
+    const body = req.body as import('../contracts/index.js').PublicLead
 
     // Honeypot: real users never fill a hidden field.
     if (body.website) return res.status(201).json({ ok: true })

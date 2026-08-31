@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { and, asc, desc, eq, isNull, ne, sql, count } from 'drizzle-orm'
-import { createUserSchema, updateUserSchema, roleSchema, PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LIST } from '@mahendradwipurwanto/ksp-contracts'
+import { createUserSchema, updateUserSchema, roleSchema, PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LIST } from '../contracts/index.js'
 import { db, users, roles, userRoles, userBranches, branches, refreshTokens, auditLogs } from '../db/index.js'
 import { hashPassword } from '../lib/auth.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param } from '../middleware/index.js'

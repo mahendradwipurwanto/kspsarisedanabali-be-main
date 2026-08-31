@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { and, asc, desc, eq, ilike, isNull, sql, count } from 'drizzle-orm'
-import { pageSchema, validateBlockProps, getBlock, scoreSeo, canPublish } from '@mahendradwipurwanto/ksp-contracts'
+import { pageSchema, validateBlockProps, getBlock, scoreSeo, canPublish } from '../contracts/index.js'
 import { db, pages, pageBlocks, pageRevisions, users } from '../db/index.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'

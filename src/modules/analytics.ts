@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { and, desc, eq, gte, sql, count, countDistinct } from 'drizzle-orm'
-import { trackEventSchema } from '@mahendradwipurwanto/ksp-contracts'
+import { trackEventSchema } from '../contracts/index.js'
 import { db, pageViews, events, leads, profilingSessions } from '../db/index.js'
 import { asyncHandler, validate, requireAuth, requirePermission, ipRateLimit, validated } from '../middleware/index.js'
 
