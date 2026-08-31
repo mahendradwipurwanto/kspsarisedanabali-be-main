@@ -4,7 +4,7 @@ import { publicUrl, presignDownload } from '../lib/storage.js'
 import { asyncHandler, notFound, param } from '../middleware/index.js'
 import {
   db, pages, pageBlocks, products, branches, posts, postCategories, jobs, faqs,
-  testimonials, documents, stats, settings, redirects, menus, media,
+  testimonials, documents, stats, settings, redirects, menus, media, pagePreviews,
 } from '../db/index.js'
 
 export const publicRouter: Router = Router()
@@ -425,5 +425,41 @@ publicRouter.get(
 
     const latencyMs = Date.now() - started
     res.status(reachable ? 200 : 503).json({ ok: reachable, reachable, latencyMs })
+  }),
+)
+
+
+/* --------------------------------- preview --------------------------------- */
+
+/**
+ * Serve an editor's unsaved draft to the landing page so it can render a
+ * preview with the real components rather than an approximation.
+ *
+ * Unauthenticated on purpose: the preview is loaded in an iframe and by a
+ * browser that has no CMS session. The token is the credential — 24 random
+ * bytes, one page, and expired after thirty minutes — and an expired or unknown
+ * token is a plain 404 so it cannot be probed for which pages exist.
+ *
+ * `noindex` is set by the landing page route itself; nothing here should ever
+ * reach a search engine.
+ */
+publicRouter.get(
+  '/preview/:token',
+  asyncHandler(async (req, res) => {
+    const [row] = await db
+      .select({ snapshot: pagePreviews.snapshot, expiresAt: pagePreviews.expiresAt })
+      .from(pagePreviews)
+      .where(eq(pagePreviews.token, param(req, 'token')))
+      .limit(1)
+
+    if (!row || row.expiresAt.getTime() < Date.now()) {
+      throw notFound('Pratinjau sudah kedaluwarsa. Buka lagi dari CMS untuk membuat tautan baru.')
+    }
+
+    // Never cached: a preview is regenerated every time the editor asks for one,
+    // and a stale copy would defeat the point.
+    res.setHeader('Cache-Control', 'no-store')
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    res.json({ data: row.snapshot })
   }),
 )

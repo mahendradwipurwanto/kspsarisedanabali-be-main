@@ -1,7 +1,8 @@
+import { randomBytes } from 'node:crypto'
 import { Router } from 'express'
-import { and, asc, desc, eq, ilike, isNull, sql, count } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, isNull, lt, sql, count } from 'drizzle-orm'
 import { pageSchema, validateBlockProps, getBlock, scoreSeo, canPublish } from '../contracts/index.js'
-import { db, pages, pageBlocks, pageRevisions, users } from '../db/index.js'
+import { db, pages, pageBlocks, pageRevisions, pagePreviews, users } from '../db/index.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
 
@@ -26,6 +27,10 @@ function analysePage(input: { title: string; slug: string; seo: Record<string, u
   let imagesWithAlt = 0
   let internalLinks = 0
   let lastLevel = 1
+  // Collected so the focus-keyword checks can ask "is the phrase where Google
+  // looks?" — the H1's own text, and everything a visitor actually reads.
+  let h1Text = ''
+  const bodyParts: string[] = [input.title]
 
   for (const b of input.blocks) {
     const def = getBlock(b.type)
@@ -36,9 +41,12 @@ function analysePage(input: { title: string; slug: string; seo: Record<string, u
       if (level > lastLevel + 1) headingJumps++
       lastLevel = level
     }
+    const isH1Block = def.headingLevel === 'h1'
     const walk = (v: unknown, key?: string) => {
       if (typeof v === 'string') {
         wordCount += wordsIn(v)
+        bodyParts.push(v)
+        if (isH1Block && (key === 'heading' || key === 'title')) h1Text += ` ${v}`
         if (key === 'image' || key === 'photo' || key === 'avatar') { if (v) imagesTotal++ }
         if (key === 'alt' || key === 'caption') { if (v.trim()) imagesWithAlt++ }
         if ((key === 'ctaHref' || key === 'href') && v.startsWith('/')) internalLinks++
@@ -59,6 +67,10 @@ function analysePage(input: { title: string; slug: string; seo: Record<string, u
     imagesTotal,
     imagesWithAlt,
     internalLinks,
+    focusKeyword: String(input.seo.focusKeyword ?? ''),
+    h1Text: h1Text.trim() || input.title,
+    // Strip markup so a keyword inside an attribute is not counted as body copy.
+    bodyText: bodyParts.join(' ').replace(/<[^>]*>/g, ' '),
   })
 }
 
@@ -312,5 +324,69 @@ pageRouter.post(
   asyncHandler(async (req, res) => {
     const body = req.body as { title: string; slug: string; seo: Record<string, unknown>; blocks: BlockInput[] }
     res.json(analysePage({ title: body.title ?? '', slug: body.slug ?? '', seo: body.seo ?? {}, blocks: body.blocks ?? [] }))
+  }),
+)
+
+
+/* --------------------------------- preview --------------------------------- */
+
+/** How long a preview link stays valid. Long enough to look at, short enough
+ *  that a link pasted into a chat stops working before it is forgotten. */
+const PREVIEW_TTL_MINUTES = 30
+
+/**
+ * Snapshot the editor's current state — including unsaved changes — and hand
+ * back a token the landing page can render.
+ *
+ * The alternative, previewing only what is saved, would make the preview
+ * useless for the thing it is for: seeing a change before committing to it.
+ */
+pageRouter.post(
+  '/:id/preview',
+  requirePermission('pages:update'),
+  asyncHandler(async (req, res) => {
+    const body = req.body as { title: string; slug: string; seo: Record<string, unknown>; blocks: BlockInput[] }
+
+    const [existing] = await db.select({ id: pages.id }).from(pages).where(eq(pages.id, param(req, 'id'))).limit(1)
+    if (!existing) throw notFound('Halaman tidak ditemukan.')
+
+    /**
+     * Deliberately NOT assertBlocksValid.
+     *
+     * A preview exists to show work in progress, which is incomplete by
+     * definition — refusing to render until every field passes would make it
+     * useless exactly when it is wanted. It also rejected pages that are already
+     * live: the seeded homepage has hero slides with no artwork yet, so
+     * previewing the current site failed outright.
+     *
+     * Publishing is still gated (the PATCH and publish routes both validate), so
+     * nothing invalid reaches visitors. Unknown block types are rejected here
+     * because the renderer has nothing to render for them.
+     */
+    for (const b of body.blocks ?? []) {
+      if (!getBlock(b.type)) throw new ApiError(422, `Blok tidak dikenal: "${b.type}"`, 'unknown_block')
+    }
+
+    // Swept here rather than on a schedule: Hobby plans get one cron a day, and
+    // previews are created far more often than that.
+    await db.delete(pagePreviews).where(lt(pagePreviews.expiresAt, new Date())).catch(() => {})
+
+    const token = randomBytes(24).toString('base64url')
+    const expiresAt = new Date(Date.now() + PREVIEW_TTL_MINUTES * 60_000)
+
+    await db.insert(pagePreviews).values({
+      token,
+      pageId: existing.id,
+      createdById: req.auth!.sub,
+      expiresAt,
+      snapshot: {
+        title: body.title ?? '',
+        slug: body.slug ?? '',
+        seo: body.seo ?? {},
+        blocks: (body.blocks ?? []).filter((b) => b.isVisible !== false),
+      },
+    })
+
+    res.status(201).json({ data: { token, expiresAt: expiresAt.toISOString(), expiresInMinutes: PREVIEW_TTL_MINUTES } })
   }),
 )

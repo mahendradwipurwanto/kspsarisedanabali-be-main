@@ -158,6 +158,33 @@ export const pageRevisions = pgTable(
   (t) => [index('page_revisions_page_idx').on(t.pageId, t.createdAt)],
 )
 
+/**
+ * A page as it looks right now in the editor, including unsaved changes, stored
+ * so the landing page can render it exactly as a visitor would see it.
+ *
+ * In the database rather than in memory because the API runs as serverless
+ * functions: the invocation that creates a preview is almost never the one that
+ * serves it, so anything held in process memory would be a coin toss.
+ *
+ * The token is the only credential — the row is fetched by an unauthenticated
+ * public route so an iframe can load it — so it is random, single-page, and
+ * short-lived. Rows are swept on write rather than by a scheduled job, since
+ * Hobby plans get one cron a day.
+ */
+export const pagePreviews = pgTable(
+  'page_previews',
+  {
+    id: id(),
+    token: varchar('token', { length: 64 }).notNull().unique(),
+    pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }),
+    snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('page_previews_expiry_idx').on(t.expiresAt)],
+)
+
 export const mediaFolders = pgTable('media_folders', {
   id: id(),
   name: varchar('name', { length: 120 }).notNull(),

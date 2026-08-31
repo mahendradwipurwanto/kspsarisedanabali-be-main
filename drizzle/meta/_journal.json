@@ -15,6 +15,13 @@
       "when": 1788025286722,
       "tag": "0001_windy_black_cat",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788196105476,
+      "tag": "0002_aspiring_kree",
+      "breakpoints": true
     }
   ]
 }

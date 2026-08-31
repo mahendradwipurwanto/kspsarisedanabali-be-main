@@ -28,6 +28,12 @@ export function normalisePhone(raw: string): string {
 /* ------------------------------------ SEO ---------------------------------- */
 
 export const seoSchema = z.object({
+  /**
+   * The phrase this page is trying to rank for. Nothing is generated from it —
+   * it exists so the scorer can tell the editor whether the phrase they care
+   * about actually appears where Google looks for it.
+   */
+  focusKeyword: z.string().max(80).optional().or(z.literal('')),
   metaTitle: z.string().max(70, 'Judul terlalu panjang untuk hasil Google').optional().or(z.literal('')),
   metaDescription: z.string().max(180, 'Deskripsi terlalu panjang').optional().or(z.literal('')),
   ogImage: z.string().optional().or(z.literal('')),
@@ -42,7 +48,38 @@ export const SEO_RULES = {
   description: { min: 70, ideal: [120, 158] as const, max: 180 },
   minWords: 300,
   minInternalLinks: 3,
+  /** Above this the phrase reads as stuffed rather than used. */
+  maxKeywordDensityPct: 3,
 } as const
+
+/**
+ * Accent- and case-insensitive phrase match. Indonesian rarely uses accents, but
+ * copy pasted from Word arrives with typographic quotes and non-breaking spaces,
+ * and an editor should not have a check fail over an invisible character.
+ */
+export function containsPhrase(haystack: string, phrase: string): boolean {
+  const clean = (v: string) =>
+    v.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u2018\u2019\u201c\u201d]/g, "'").replace(/\s+/g, ' ').trim()
+  const h = clean(haystack)
+  const n = clean(phrase)
+  return n.length > 0 && h.includes(n)
+}
+
+export function countPhrase(haystack: string, phrase: string): number {
+  const clean = (v: string) => v.toLowerCase().replace(/\s+/g, ' ').trim()
+  const h = clean(haystack)
+  const n = clean(phrase)
+  if (!n) return 0
+  let count = 0
+  let from = 0
+  for (;;) {
+    const at = h.indexOf(n, from)
+    if (at === -1) break
+    count++
+    from = at + n.length
+  }
+  return count
+}
 
 export interface SeoCheck {
   id: string
@@ -62,6 +99,10 @@ export function scoreSeo(input: {
   imagesTotal: number
   imagesWithAlt: number
   internalLinks: number
+  /** Optional: only scored when the editor has set a focus keyword. */
+  focusKeyword?: string
+  h1Text?: string
+  bodyText?: string
 }): { checks: SeoCheck[]; score: number } {
   const c: SeoCheck[] = []
   const t = (input.title ?? '').trim().length
@@ -127,6 +168,51 @@ export function scoreSeo(input: {
       ? { id: 'slug', label: 'Alamat halaman', status: 'pass', hint: `/${input.slug}` }
       : { id: 'slug', label: 'Alamat halaman', status: 'fail', hint: 'Gunakan huruf kecil dan tanda hubung, tanpa spasi.' },
   )
+
+  /**
+   * Focus-keyword checks only run when the editor has named a phrase. Scoring a
+   * page against a keyword nobody chose would just add noise, and the score is
+   * a publish gate — it has to stay honest about what it actually knows.
+   */
+  const kw = (input.focusKeyword ?? '').trim()
+  if (kw) {
+    const inTitle = containsPhrase(input.title ?? '', kw)
+    const inDesc = containsPhrase(input.description ?? '', kw)
+    const inSlug = containsPhrase((input.slug ?? '').replace(/-/g, ' '), kw)
+    const inH1 = containsPhrase(input.h1Text ?? '', kw)
+
+    c.push(
+      inTitle
+        ? { id: 'kw_title', label: 'Kata kunci di judul', status: 'pass', hint: `"${kw}" sudah ada di judul.` }
+        : { id: 'kw_title', label: 'Kata kunci di judul', status: 'fail', hint: `"${kw}" belum ada di judul Google. Ini penempatan yang paling berpengaruh.` },
+    )
+    c.push(
+      inDesc
+        ? { id: 'kw_desc', label: 'Kata kunci di deskripsi', status: 'pass', hint: 'Sudah ada di deskripsi.' }
+        : { id: 'kw_desc', label: 'Kata kunci di deskripsi', status: 'warn', hint: `Tambahkan "${kw}" ke deskripsi — Google menebalkannya di hasil pencarian.` },
+    )
+    c.push(
+      inSlug
+        ? { id: 'kw_slug', label: 'Kata kunci di alamat', status: 'pass', hint: 'Sudah ada di alamat halaman.' }
+        : { id: 'kw_slug', label: 'Kata kunci di alamat', status: 'warn', hint: `Alamat halaman belum memuat "${kw}".` },
+    )
+    c.push(
+      inH1
+        ? { id: 'kw_h1', label: 'Kata kunci di judul utama', status: 'pass', hint: 'Sudah ada di judul utama halaman.' }
+        : { id: 'kw_h1', label: 'Kata kunci di judul utama', status: 'warn', hint: `Judul utama (H1) belum memuat "${kw}".` },
+    )
+
+    const body = input.bodyText ?? ''
+    const hits = countPhrase(body, kw)
+    const density = input.wordCount > 0 ? (hits * kw.split(/\s+/).length * 100) / input.wordCount : 0
+    c.push(
+      hits === 0
+        ? { id: 'kw_body', label: 'Kata kunci di isi', status: 'fail', hint: `"${kw}" tidak muncul sama sekali di isi halaman.` }
+        : density > SEO_RULES.maxKeywordDensityPct
+          ? { id: 'kw_body', label: 'Kata kunci di isi', status: 'warn', hint: `Muncul ${hits}× (${density.toFixed(1)}%). Terlalu sering — tulis senatural mungkin.` }
+          : { id: 'kw_body', label: 'Kata kunci di isi', status: 'pass', hint: `Muncul ${hits}× (${density.toFixed(1)}%) — wajar.` },
+    )
+  }
 
   const weight = { pass: 1, warn: 0.5, fail: 0 }
   const score = Math.round((c.reduce((s, x) => s + weight[x.status], 0) / c.length) * 100)
