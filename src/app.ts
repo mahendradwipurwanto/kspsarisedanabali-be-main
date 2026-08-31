@@ -1,24 +1,36 @@
-import express, { type Express } from 'express'
+import express, { type Express, type RequestHandler } from 'express'
 import cors from 'cors'
 import * as helmetModule from 'helmet'
 import cookieParser from 'cookie-parser'
 import { env, corsOrigins } from './lib/env.js'
 
 /**
- * helmet's package.json `exports` map declares only `import` and `require` — no
- * `types` condition — and both its .d.mts and .d.cts use `export { helmet as
- * default }`. Which declaration TypeScript picks therefore depends on how the
- * consuming file is compiled, and Vercel's build resolves the CJS one, where a
- * default import yields the module namespace instead of the function:
+ * helmet's package.json `exports` map declares only `import` and `require` —
+ * there is no `types` condition — so which declaration file TypeScript picks
+ * depends entirely on how the consuming file is being compiled. Vercel's build
+ * resolves the CommonJS one, where neither `import helmet from 'helmet'` nor
+ * reading `.default` off a namespace import typechecks as callable:
  *
- *   src/app.ts(43,5): error TS2349: This expression is not callable.
+ *   src/app.ts(59,5): error TS2349: This expression is not callable.
  *   Type 'typeof import(".../helmet/index")' has no call signatures.
  *
- * Reading `.default` off the namespace is correct under both resolutions —
- * index.cjs sets `exports.default` and index.mjs exports it — so this builds
- * locally and on Vercel without depending on interop behaviour.
+ * Both declarations do export the function — only the *type* differs by
+ * resolution — and neither could be reproduced locally. So rather than keep
+ * guessing which file the compiler chose, the call signature is declared here
+ * and applied through `unknown`. The runtime lookup covers both module shapes:
+ * index.mjs exports `default`, and index.cjs sets `exports.default`.
+ *
+ * The options type is narrowed to what this app actually passes, so a typo in
+ * these two settings is still caught.
  */
-const helmet = helmetModule.default
+type HelmetFactory = (options?: {
+  contentSecurityPolicy?: boolean
+  crossOriginResourcePolicy?: boolean | { policy: 'same-origin' | 'same-site' | 'cross-origin' }
+}) => RequestHandler
+
+const helmet: HelmetFactory =
+  (helmetModule as unknown as { default?: HelmetFactory }).default ??
+  (helmetModule as unknown as HelmetFactory)
 import { attachIp, errorHandler, notFoundHandler, responseDeadline } from './middleware/index.js'
 import { authRouter } from './modules/auth.js'
 import { publicRouter } from './modules/public.js'
