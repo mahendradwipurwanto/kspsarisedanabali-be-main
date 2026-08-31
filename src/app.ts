@@ -1,8 +1,24 @@
 import express, { type Express } from 'express'
 import cors from 'cors'
-import helmet from 'helmet'
+import * as helmetModule from 'helmet'
 import cookieParser from 'cookie-parser'
 import { env, corsOrigins } from './lib/env.js'
+
+/**
+ * helmet's package.json `exports` map declares only `import` and `require` — no
+ * `types` condition — and both its .d.mts and .d.cts use `export { helmet as
+ * default }`. Which declaration TypeScript picks therefore depends on how the
+ * consuming file is compiled, and Vercel's build resolves the CJS one, where a
+ * default import yields the module namespace instead of the function:
+ *
+ *   src/app.ts(43,5): error TS2349: This expression is not callable.
+ *   Type 'typeof import(".../helmet/index")' has no call signatures.
+ *
+ * Reading `.default` off the namespace is correct under both resolutions —
+ * index.cjs sets `exports.default` and index.mjs exports it — so this builds
+ * locally and on Vercel without depending on interop behaviour.
+ */
+const helmet = helmetModule.default
 import { attachIp, errorHandler, notFoundHandler, responseDeadline } from './middleware/index.js'
 import { authRouter } from './modules/auth.js'
 import { publicRouter } from './modules/public.js'
