@@ -9,7 +9,7 @@ import { revalidateLp } from '../lib/revalidate.js'
 export const pageRouter: Router = Router()
 pageRouter.use(requireAuth)
 
-type BlockInput = { id?: string; type: string; props: Record<string, unknown>; isVisible?: boolean }
+export type BlockInput = { id?: string; type: string; props: Record<string, unknown>; isVisible?: boolean }
 
 /** Strip HTML and count words — used by the SEO scorer. */
 const wordsIn = (html: string) => html.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length
@@ -19,7 +19,7 @@ const wordsIn = (html: string) => html.replace(/<[^>]*>/g, ' ').split(/\s+/).fil
  * level comes from the registry, never from the editor, so a page cannot end up
  * with two H1s regardless of what the user does in the UI.
  */
-function analysePage(input: { title: string; slug: string; seo: Record<string, unknown>; blocks: BlockInput[] }) {
+export function analysePage(input: { title: string; slug: string; seo: Record<string, unknown>; blocks: BlockInput[] }) {
   let h1Count = 0
   let headingJumps = 0
   let wordCount = wordsIn(input.title)
