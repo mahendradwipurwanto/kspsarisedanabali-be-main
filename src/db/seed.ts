@@ -2,7 +2,7 @@ import 'dotenv/config'
 
 import { randomBytes } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
-import { SYSTEM_ROLES, type SystemRoleKey } from '../contracts/index.js'
+import { SYSTEM_ROLES, DEFAULT_HEADER, DEFAULT_FOOTER, DEFAULT_BRAND, DEFAULT_FOOTER_MENU, DEFAULT_QUICK_ACCESS, type SystemRoleKey } from '../contracts/index.js'
 import { db, sqlClient } from './index.js'
 import * as t from './schema.js'
 import { hashPassword } from '../lib/auth.js'
@@ -471,6 +471,9 @@ async function seedSettings() {
       { label: 'Badan Hukum', value: 'Nomor AHU-003334.AH.01.39.TAHUN 2024', date: '06 Agustus 2024' },
     ],
     social: { facebook: '', instagram: '', youtube: '' },
+    header: DEFAULT_HEADER,
+    footer: DEFAULT_FOOTER,
+    brand: DEFAULT_BRAND,
     seoDefaults: {
       titleTemplate: '%s | KSP Sari Sedana Bali',
       defaultTitle: 'KSP Sari Sedana Bali — Koperasi Simpan Pinjam di Karangasem',
@@ -516,14 +519,7 @@ async function seedMenus() {
     { label: 'Karir', href: '/karir' },
     { label: 'Laporan Keuangan', href: '/laporan-keuangan' },
   ]
-  const footer = [
-    { label: 'Produk', href: '/produk' },
-    { label: 'Lokasi Kantor', href: '/lokasi' },
-    { label: 'Karir', href: '/karir' },
-    { label: 'Berita', href: '/berita' },
-    { label: 'Tanya Jawab', href: '/faq' },
-    { label: 'Kontak Kami', href: '/kontak' },
-  ]
+  const footer = DEFAULT_FOOTER_MENU
   for (const [key, items] of [['main', main], ['footer', footer]] as const) {
     await db
       .insert(t.menus).values({ key, name: key === 'main' ? 'Menu Utama' : 'Menu Footer', items })
@@ -532,6 +528,9 @@ async function seedMenus() {
 }
 
 async function seedPages(userId: string) {
+  // The hero's rate card references a product by id; resolve slugs once here.
+  const productRows = await db.select({ id: t.products.id, slug: t.products.slug }).from(t.products)
+  const productIds = Object.fromEntries(productRows.map((r) => [r.slug, r.id])) as Record<string, string>
   console.log('→ pages')
 
   const home = {
@@ -544,48 +543,56 @@ async function seedPages(userId: string) {
     },
     blocks: [
       { type: 'hero_banner', props: {
+        badge: 'Program unggulan',
         autoplay: true,
+        interval: 8,
         slides: [
-          { image: '', heading: 'Pinjaman 1 Pohon', subheading: 'Program pembiayaan bersama BPDLH untuk anggota pemilik pohon kayu.',
+          { image: '', heading: 'Pinjaman 1 Pohon', subheading: 'Program pembiayaan bersama BPDLH untuk anggota pemilik pohon kayu. Bunga menurun, syarat sederhana, didampingi petugas dari pengajuan sampai pencairan.',
             bullets: [{ text: 'Suku bunga sampai dengan 0,9% menurun per bulan' }, { text: 'Syarat KTP suami/istri' }, { text: 'Agunan BPKB/SHM atau simpanan anggota' }, { text: 'Memiliki pohon kayu' }],
-            ctaLabel: 'Lihat Detail Program', ctaHref: '/produk/pinjaman/pinjaman-1-pohon' },
-          { image: '', heading: 'Pinjaman Bunga Murah 1,3% per Bulan', subheading: 'Modal usaha, renovasi rumah, atau kebutuhan mendesak dengan angsuran ringan.',
-            bullets: [{ text: 'Proses cepat, syarat mudah' }, { text: 'Didampingi petugas koperasi' }],
-            ctaLabel: 'Hitung Simulasi Angsuran', ctaHref: '/simulasi' },
+            ctaLabel: 'Lihat Detail Program', ctaHref: '/produk/pinjaman/pinjaman-1-pohon',
+            secondaryLabel: 'Cari produk yang cocok', secondaryHref: '/profiling',
+            featuredProduct: productIds['pinjaman-1-pohon'] ?? '' },
+          { image: '', heading: 'Pinjaman Bunga Murah', subheading: 'Modal usaha, renovasi rumah, atau kebutuhan mendesak dengan angsuran ringan dan proses yang tidak berbelit.',
+            bullets: [{ text: 'Proses cepat, syarat mudah' }, { text: 'Didampingi petugas koperasi' }, { text: 'Angsuran tetap setiap bulan' }],
+            ctaLabel: 'Hitung Simulasi Angsuran', ctaHref: '/simulasi',
+            secondaryLabel: 'Lihat semua pinjaman', secondaryHref: '/produk/pinjaman',
+            featuredProduct: productIds['pinjaman-bunga-murah'] ?? '' },
         ],
       } },
+      { type: 'quick_access', props: { items: DEFAULT_QUICK_ACCESS } },
       { type: 'stats_counter', props: {
-        eyebrow: 'PENCAPAIAN KAMI', heading: 'Pencapaian Koperasi',
+        eyebrow: 'Pencapaian kami', heading: 'Pencapaian Koperasi',
         subtext: 'Wujud nyata pertumbuhan dan komitmen kami melayani anggota dari tahun 2002 sampai saat ini.',
+        layout: 'ledger',
         items: [],
       } },
       { type: 'profiling_cta', props: {
-        heading: 'Bingung pilih produk yang mana?',
+        eyebrow: 'Panduan cepat', heading: 'Bingung pilih produk yang mana?',
         body: 'Jawab 4 pertanyaan singkat, kami tunjukkan produk yang paling sesuai beserta simulasi angsurannya.',
         ctaLabel: 'Mulai, ±30 detik', note: 'Tanpa perlu daftar akun.',
       } },
       { type: 'product_grid', props: {
-        eyebrow: 'LAYANAN KAMI', heading: 'Produk Kami',
+        eyebrow: 'Layanan kami', heading: 'Produk Kami',
         subtext: 'Produk-produk unggulan dari KSP Sari Sedana Bali.',
         category: 'all', limit: 6, ctaLabel: 'Lihat Semua Produk', ctaHref: '/produk',
       } },
       { type: 'cta_banner', props: {
-        eyebrow: 'BERSAMA KOPERASI', heading: 'Mari Bangkitkan Ekonomi Kerakyatan',
+        eyebrow: 'Bersama koperasi', heading: 'Mari Bangkitkan Ekonomi Kerakyatan',
         body: 'Bergabunglah bersama lebih dari 5.000 anggota yang telah merasakan manfaat nyata dari koperasi.',
-        ctaLabel: 'Hubungi Kami', ctaHref: '/kontak', variant: 'image', image: '',
+        ctaLabel: 'Hubungi Kami', ctaHref: '/kontak', secondaryLabel: 'Cari produk', secondaryHref: '/profiling', variant: 'image', image: '',
       } },
       { type: 'branch_finder', props: {
-        heading: 'Kantor Terdekat dari Anda',
+        eyebrow: 'Kantor kami', heading: 'Kantor Terdekat dari Anda',
         body: 'Tiga kantor kami siap melayani. Lihat mana yang paling dekat, sedang buka, dan bagaimana cara ke sana.',
         showMap: true,
       } },
       { type: 'news_list', props: {
-        eyebrow: 'INFORMASI TERBARU', heading: 'Berita Terkini',
+        eyebrow: 'Informasi terbaru', heading: 'Berita Terkini',
         subtext: 'Ikuti perkembangan terbaru dan informasi penting dari KSP Sari Sedana Bali.',
         limit: 3, ctaLabel: 'Lihat Semua Berita',
       } },
       { type: 'lead_form', props: {
-        eyebrow: 'MASUKAN ANDA', heading: 'Tertarik? Petugas Kami', headingAccent: 'Siap Membantu',
+        eyebrow: 'Masukan Anda', heading: 'Tertarik? Petugas Kami', headingAccent: 'Siap Membantu',
         body: 'Tinggalkan nama dan nomor WhatsApp Anda. Petugas cabang terdekat akan menghubungi dalam 1×24 jam kerja — tanpa biaya konsultasi.',
         formTitle: 'Kirim Permintaan',
         statValue: '500+', statLabel: 'Calon Nasabah Terlayani',
@@ -599,7 +606,7 @@ async function seedPages(userId: string) {
         ],
       } },
       { type: 'testimonial_slider', props: {
-        eyebrow: 'TESTIMONI', heading: 'Apa Kata Mereka?',
+        eyebrow: 'Testimoni', heading: 'Apa Kata Mereka?',
         subtext: 'Kepercayaan anggota adalah aset terbesar kami. Dengar langsung pengalaman mereka bersama KSP Sari Sedana Bali.',
         limit: 3,
       } },
@@ -616,13 +623,13 @@ async function seedPages(userId: string) {
     },
     blocks: [
       { type: 'page_header', props: {
-        eyebrow: 'TENTANG KAMI', heading: 'Koperasi yang Tumbuh Bersama Anggotanya Sejak 2002',
+        eyebrow: 'Tentang kami', heading: 'Koperasi yang Tumbuh Bersama Anggotanya Sejak 2002',
         subheading: 'Didirikan pada 10 April 2002 di Karangasem, KSP Sari Sedana Bali berkembang menjadi koperasi yang memberikan manfaat nyata bagi anggota dan masyarakat.',
         align: 'left',
       } },
       { type: 'rich_text', props: { width: 'narrow', body: '<p>Didirikan pada 10 April 2002, Koperasi Sari Sedana Bali telah berkembang menjadi koperasi yang memberikan manfaat nyata bagi anggota dan masyarakat. Visi kami adalah menjadi koperasi yang tangguh, mandiri, dan memberikan manfaat bagi anggota serta masyarakat dengan semangat pelayanan PRIMA.</p><p>Kami dipercaya oleh Kementerian Koperasi untuk menyalurkan dana pemerintah, seperti dari <strong>LPDB</strong> dan <strong>PIP Kementerian Keuangan</strong>. Koperasi kami menawarkan berbagai <a href="/produk/simpanan">produk simpanan</a> dan <a href="/produk/pinjaman">produk pinjaman</a> yang mendukung pertumbuhan usaha anggota.</p><p>Demi keamanan, kenyamanan, dan kecepatan dalam bertransaksi, KSP Sari Sedana Bali juga menyediakan layanan mobile untuk semua transaksi perbankan seperti transfer uang, pembayaran tagihan, pembelian pulsa, hingga cek saldo — dapat dilakukan langsung dari ponsel Anda kapan saja dan di mana saja.</p><p>KSP Sari Sedana berkomitmen sosial melalui program CSR, seperti bantuan untuk siswa kurang mampu, pembagian sembako, dan program orang tua asuh untuk anak yatim/piatu.</p>' } },
       { type: 'feature_grid', props: {
-        eyebrow: 'PELAYANAN PRIMA', heading: 'Lima Prinsip yang Kami Pegang', columns: '3',
+        eyebrow: 'Pelayanan prima', heading: 'Lima Prinsip yang Kami Pegang', columns: '3',
         items: [
           { icon: 'star', title: 'Prioritas', body: 'Prioritas layanan kepada anggota.' },
           { icon: 'heart', title: 'Ramah', body: 'Ramah dalam pelayanan.' },
@@ -652,13 +659,13 @@ async function seedPages(userId: string) {
     },
     blocks: [
       { type: 'page_header', props: {
-        eyebrow: 'KONTAK', heading: 'Hubungi Kantor Terdekat dari Anda',
+        eyebrow: 'Kontak', heading: 'Hubungi Kantor Terdekat dari Anda',
         subheading: 'Tiga kantor kami di Karangasem siap melayani. Pilih yang paling dekat, telepon langsung, atau tinggalkan pesan di bawah.',
         align: 'left',
       } },
       { type: 'branch_finder', props: { heading: 'Pilih Kantor', body: '', showMap: true } },
       { type: 'lead_form', props: {
-        eyebrow: 'TINGGALKAN PESAN', heading: 'Ada yang Ingin Ditanyakan?',
+        eyebrow: 'Tinggalkan pesan', heading: 'Ada yang Ingin Ditanyakan?',
         body: 'Isi formulir di bawah ini. Petugas kami akan menghubungi Anda lewat WhatsApp dalam 1×24 jam kerja.',
         askProduct: true, askBranch: true,
         successMessage: 'Terima kasih. Pesan Anda sudah kami terima dan petugas akan menghubungi dalam 1×24 jam kerja.',

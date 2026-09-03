@@ -51,18 +51,44 @@ export const BLOCKS = {
     headingLevel: 'h1',
     singleton: true,
     fields: {
+      badge: field.text({ label: 'Label kecil di atas judul', max: 40, default: 'Program unggulan', help: 'Muncul sebagai lencana kecil. Kosongkan untuk menyembunyikan.' }),
       slides: field.repeater({
         label: 'Slide banner', itemLabel: 'Slide', min: 1, max: 6,
         of: {
-          image: field.image({ label: 'Gambar banner', required: true, help: 'Ukuran ideal 1600×800 piksel.' }),
+          image: field.image({ label: 'Gambar banner', help: 'Ukuran ideal 1600×900 piksel. Kosongkan untuk latar polos bermotif.' }),
           heading: field.text({ label: 'Judul di banner', required: true, max: 70 }),
           subheading: field.textarea({ label: 'Kalimat pendukung', max: 180 }),
           bullets: field.repeater({ label: 'Poin keunggulan', itemLabel: 'Poin', max: 5, of: { text: field.text({ label: 'Teks', required: true, max: 90 }) } }),
-          ctaLabel: field.text({ label: 'Tulisan tombol', max: 30, placeholder: 'Ajukan Sekarang' }),
-          ctaHref: field.link({ label: 'Tombol menuju ke', placeholder: '/produk/pinjaman' }),
+          ctaLabel: field.text({ label: 'Tulisan tombol utama', max: 30, placeholder: 'Ajukan Sekarang' }),
+          ctaHref: field.link({ label: 'Tombol utama menuju ke', placeholder: '/produk/pinjaman' }),
+          secondaryLabel: field.text({ label: 'Tulisan tombol kedua', max: 30, placeholder: 'Cari produk yang cocok' }),
+          secondaryHref: field.link({ label: 'Tombol kedua menuju ke', placeholder: '/profiling' }),
+          featuredProduct: field.reference({ label: 'Produk yang ditampilkan di kartu angka', to: 'product', help: 'Kartu di sisi kanan menampilkan suku bunga, plafon, dan tenor produk ini. Kosongkan untuk memakai poin keunggulan saja.' }),
         },
       }),
       autoplay: field.boolean({ label: 'Ganti slide otomatis', default: true }),
+      interval: field.number({ label: 'Jeda antar slide (detik)', min: 3, max: 30, default: 8 }),
+    },
+  }),
+
+
+  quick_access: def({
+    type: 'quick_access',
+    label: 'Akses Cepat',
+    description: 'Tiga pintasan di bawah banner: profiling, simulasi, kantor terdekat.',
+    category: 'Konversi',
+    icon: 'zap',
+    headingLevel: null,
+    fields: {
+      items: field.repeater({
+        label: 'Pintasan', itemLabel: 'Pintasan', min: 1, max: 4,
+        of: {
+          icon: field.icon({ label: 'Ikon', default: 'spark' }),
+          title: field.text({ label: 'Judul', required: true, max: 40 }),
+          body: field.text({ label: 'Keterangan singkat', max: 60 }),
+          href: field.link({ label: 'Menuju ke', required: true }),
+        },
+      }),
     },
   }),
 
@@ -103,6 +129,7 @@ export const BLOCKS = {
       eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'PENCAPAIAN KAMI' }),
       heading: field.text({ label: 'Judul bagian', required: true, max: 60, default: 'Pencapaian Koperasi' }),
       subtext: field.textarea({ label: 'Penjelasan singkat', max: 200, rows: 2 }),
+      layout: field.select({ label: 'Tampilan', options: [{ value: 'ledger', label: 'Baris angka (rapi, seperti laporan)' }, { value: 'cards', label: 'Kartu dengan ikon' }], default: 'ledger' }),
       items: field.repeater({
         label: 'Angka pencapaian', itemLabel: 'Angka', min: 2, max: 8,
         of: {
@@ -150,6 +177,8 @@ export const BLOCKS = {
       image: field.image({ label: 'Gambar latar' }),
       ctaLabel: field.text({ label: 'Tulisan tombol', max: 30 }),
       ctaHref: field.link({ label: 'Tombol menuju ke' }),
+      secondaryLabel: field.text({ label: 'Tulisan tombol kedua', max: 30, placeholder: 'Cari produk' }),
+      secondaryHref: field.link({ label: 'Tombol kedua menuju ke', placeholder: '/profiling' }),
       variant: field.select({ label: 'Gaya tampilan', options: [{ value: 'image', label: 'Dengan gambar' }, { value: 'solid', label: 'Warna polos' }], default: 'image' }),
     },
   }),
@@ -167,6 +196,7 @@ export const BLOCKS = {
       subtext: field.textarea({ label: 'Penjelasan singkat', max: 200, rows: 2 }),
       limit: field.number({ label: 'Jumlah berita', min: 1, max: 12, default: 3 }),
       ctaLabel: field.text({ label: 'Tulisan tombol', max: 30, default: 'Lihat Semua Berita' }),
+      ctaHref: field.link({ label: 'Tombol menuju ke', default: '/berita' }),
     },
   }),
 
@@ -219,9 +249,11 @@ export const BLOCKS = {
     icon: 'wand',
     headingLevel: 'h2',
     fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Panduan cepat' }),
       heading: field.text({ label: 'Judul ajakan', required: true, max: 80, default: 'Bingung pilih produk yang mana?' }),
       body: field.textarea({ label: 'Kalimat pendukung', max: 240, rows: 2, default: 'Jawab 4 pertanyaan singkat, kami tunjukkan produk yang paling sesuai beserta simulasi angsurannya.' }),
       ctaLabel: field.text({ label: 'Tulisan tombol', max: 40, default: 'Mulai, ±30 detik' }),
+      ctaHref: field.link({ label: 'Tombol menuju ke', default: '/profiling' }),
       note: field.text({ label: 'Catatan kecil di bawah tombol', max: 60, default: 'Tanpa perlu daftar akun.' }),
     },
   }),
@@ -234,6 +266,7 @@ export const BLOCKS = {
     icon: 'navigation',
     headingLevel: 'h2',
     fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Kantor kami' }),
       heading: field.text({ label: 'Judul bagian', required: true, max: 70, default: 'Kantor Terdekat dari Anda' }),
       body: field.textarea({ label: 'Penjelasan singkat', max: 240, rows: 2 }),
       showMap: field.boolean({ label: 'Tampilkan peta', default: true }),
@@ -248,6 +281,7 @@ export const BLOCKS = {
     icon: 'calculator',
     headingLevel: 'h2',
     fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Kalkulator' }),
       heading: field.text({ label: 'Judul bagian', required: true, max: 70, default: 'Simulasi Angsuran' }),
       body: field.textarea({ label: 'Penjelasan singkat', max: 240, rows: 2 }),
       product: field.reference({ label: 'Produk yang disimulasikan', to: 'product', help: 'Kosongkan agar pengunjung bisa memilih sendiri.' }),
@@ -327,6 +361,7 @@ export const BLOCKS = {
     icon: 'file-text',
     headingLevel: 'h2',
     fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Unduhan' }),
       heading: field.text({ label: 'Judul bagian', max: 70 }),
       category: field.select({
         label: 'Jenis dokumen',
@@ -344,6 +379,7 @@ export const BLOCKS = {
     icon: 'users',
     headingLevel: 'h2',
     fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Tata kelola' }),
       heading: field.text({ label: 'Judul bagian', max: 70, default: 'Struktur Organisasi' }),
       groups: field.repeater({
         label: 'Kelompok jabatan', itemLabel: 'Kelompok', min: 1, max: 10,
@@ -366,6 +402,7 @@ export const BLOCKS = {
     icon: 'phone',
     headingLevel: 'h2',
     fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Kontak' }),
       heading: field.text({ label: 'Judul bagian', max: 70, default: 'Hubungi Kantor Kami' }),
       showHours: field.boolean({ label: 'Tampilkan jam buka', default: true }),
       showMap: field.boolean({ label: 'Tampilkan peta', default: true }),

@@ -34,6 +34,97 @@ export const NAV_MAIN = [
   { label: 'Laporan Keuangan', href: '/laporan-keuangan' },
 ] as const
 
+/**
+ * Site-wide chrome that the CMS can edit under Pengaturan → Website. These are
+ * the fallbacks the landing page renders when a settings group has never been
+ * saved, and the values the seed writes on first run. Keeping them here — not
+ * in the landing page — means the CMS form, the seed and the site all agree.
+ */
+export interface MenuItem { label: string; href: string; children?: MenuItem[] }
+
+export interface HeaderSettings {
+  ctaLabel: string
+  ctaHref: string
+  /** Show the "cari produk" shortcut on wide screens. */
+  showProfilingShortcut: boolean
+  profilingLabel: string
+  /** Sticky announcement above the header. Empty hides it. */
+  announcement: string
+  announcementHref: string
+}
+
+export interface FooterSettings {
+  ctaHeading: string
+  ctaBody: string
+  primaryLabel: string
+  primaryHref: string
+  secondaryLabel: string
+  secondaryHref: string
+  showBranches: boolean
+  bottomNote: string
+}
+
+export interface BrandSettings {
+  name: string
+  tagline: string
+  /** Media URL. Empty renders the built-in leaf mark. */
+  logo: string
+  logoLight: string
+}
+
+export const DEFAULT_HEADER: HeaderSettings = {
+  ctaLabel: 'Hubungi Kami',
+  ctaHref: 'whatsapp',
+  showProfilingShortcut: true,
+  profilingLabel: 'Cari produk',
+  announcement: '',
+  announcementHref: '',
+}
+
+export const DEFAULT_FOOTER: FooterSettings = {
+  ctaHeading: 'Ada yang bisa kami bantu?',
+  ctaBody: 'Petugas kami siap membantu, tanpa biaya konsultasi.',
+  primaryLabel: 'Cari produk yang cocok',
+  primaryHref: '/profiling',
+  secondaryLabel: 'Kunjungi kantor',
+  secondaryHref: '/lokasi',
+  showBranches: true,
+  bottomNote: '',
+}
+
+export const DEFAULT_BRAND: BrandSettings = {
+  name: SITE.shortName,
+  tagline: SITE.tagline,
+  logo: '',
+  logoLight: '',
+}
+
+export const DEFAULT_QUICK_ACCESS = [
+  { icon: 'spark', title: 'Cari Produk yang Cocok', body: '4 pertanyaan singkat, ±30 detik', href: '/profiling' },
+  { icon: 'calculator', title: 'Simulasi Angsuran', body: 'Hitung perkiraan cicilan bulanan', href: '/simulasi' },
+  { icon: 'map-pin', title: 'Kantor Terdekat', body: 'Jam buka, telepon, petunjuk arah', href: '/lokasi' },
+]
+
+export const DEFAULT_FOOTER_MENU: MenuItem[] = [
+  { label: 'Produk', href: '/produk', children: [
+    { label: 'Simpanan', href: '/produk/simpanan' },
+    { label: 'Pinjaman', href: '/produk/pinjaman' },
+    { label: 'Simulasi Angsuran', href: '/simulasi' },
+    { label: 'Cari Produk yang Cocok', href: '/profiling' },
+  ] },
+  { label: 'Koperasi', href: '/tentang-kami', children: [
+    { label: 'Tentang Kami', href: '/tentang-kami' },
+    { label: 'Laporan Keuangan', href: '/laporan-keuangan' },
+    { label: 'Berita & Artikel', href: '/berita' },
+    { label: 'Karir', href: '/karir' },
+  ] },
+  { label: 'Bantuan', href: '/kontak', children: [
+    { label: 'Lokasi Kantor', href: '/lokasi' },
+    { label: 'Tanya Jawab', href: '/faq' },
+    { label: 'Kontak Kami', href: '/kontak' },
+  ] },
+]
+
 export const DAY_NAMES_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const
 
 /** Live open/closed state in WITA, independent of the viewer's own clock setting. */
@@ -96,3 +187,31 @@ export const telLink = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 
 export const directionsLink = (lat: number, lng: number, label?: string) =>
   `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${label ? `&destination_place_id=&query=${encodeURIComponent(label)}` : ''}`
+
+/**
+ * Icon names the website can draw. The CMS icon picker offers exactly this list,
+ * so an editor can never type a name the site does not know.
+ */
+export const ICON_NAMES = [
+  'spark', 'calculator', 'map-pin', 'phone', 'users', 'trending-up', 'wallet', 'handshake', 'piggy-bank', 'award',
+  'star', 'shield-check', 'building', 'percent', 'briefcase', 'file-text', 'mail', 'clock', 'compass', 'leaf', 'check',
+] as const
+export type IconName = (typeof ICON_NAMES)[number]
+
+/** Fixed routes of the website, offered as suggestions wherever a link is picked. */
+export const INTERNAL_ROUTES: { href: string; label: string }[] = [
+  { href: '/', label: 'Beranda' },
+  { href: '/tentang-kami', label: 'Tentang Kami' },
+  { href: '/produk', label: 'Semua produk' },
+  { href: '/produk/simpanan', label: 'Produk simpanan' },
+  { href: '/produk/pinjaman', label: 'Produk pinjaman' },
+  { href: '/simulasi', label: 'Simulasi angsuran' },
+  { href: '/profiling', label: 'Cari produk yang cocok' },
+  { href: '/lokasi', label: 'Lokasi kantor' },
+  { href: '/berita', label: 'Berita' },
+  { href: '/faq', label: 'Tanya jawab' },
+  { href: '/karir', label: 'Karir' },
+  { href: '/laporan-keuangan', label: 'Laporan keuangan' },
+  { href: '/kontak', label: 'Kontak' },
+  { href: 'whatsapp', label: 'WhatsApp koperasi (nomor dari pengaturan)' },
+]

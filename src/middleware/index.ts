@@ -207,7 +207,10 @@ export const notFoundHandler: RequestHandler = (_req, res) => {
   res.status(404).json({ error: { message: 'Endpoint tidak ditemukan.', code: 'not_found' } })
 }
 
-export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (err: unknown, req: Request, res: Response, next: NextFunction) => {
+  // The response deadline may already have answered 503; writing again would
+  // only throw ERR_HTTP_HEADERS_SENT on top of the real error.
+  if (res.headersSent) return next(err)
   if (err instanceof ApiError) {
     return res.status(err.status).json({ error: { message: err.message, code: err.code, details: err.details } })
   }
