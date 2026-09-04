@@ -164,8 +164,8 @@ export function scoreSeo(input: {
   )
 
   c.push(
-    input.slug && slugSchema.safeParse(input.slug).success
-      ? { id: 'slug', label: 'Alamat halaman', status: 'pass', hint: `/${input.slug}` }
+    input.slug && (input.slug === '/' || slugSchema.safeParse(input.slug).success)
+      ? { id: 'slug', label: 'Alamat halaman', status: 'pass', hint: input.slug === '/' ? '/' : `/${input.slug}` }
       : { id: 'slug', label: 'Alamat halaman', status: 'fail', hint: 'Gunakan huruf kecil dan tanda hubung, tanpa spasi.' },
   )
 
@@ -329,9 +329,12 @@ export const blockInputSchema = z.object({
   isVisible: z.boolean().default(true),
 })
 
+/** Page slugs follow the slug rule, except the home page, which is "/". */
+export const pageSlugSchema = slugSchema.or(z.literal('/'))
+
 export const pageSchema = z.object({
   title: z.string().min(1, 'Judul wajib diisi').max(160),
-  slug: slugSchema,
+  slug: pageSlugSchema,
   status: z.enum(PAGE_STATUSES).default('draft'),
   seo: seoSchema.default({}),
   blocks: z.array(blockInputSchema).default([]),

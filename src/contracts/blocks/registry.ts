@@ -131,7 +131,7 @@ export const BLOCKS = {
       subtext: field.textarea({ label: 'Penjelasan singkat', max: 200, rows: 2 }),
       layout: field.select({ label: 'Tampilan', options: [{ value: 'ledger', label: 'Baris angka (rapi, seperti laporan)' }, { value: 'cards', label: 'Kartu dengan ikon' }], default: 'ledger' }),
       items: field.repeater({
-        label: 'Angka pencapaian', itemLabel: 'Angka', min: 2, max: 8,
+        label: 'Angka pencapaian', itemLabel: 'Angka', max: 8,
         of: {
           icon: field.icon({ label: 'Ikon' }),
           value: field.text({ label: 'Angka', required: true, max: 20, placeholder: 'Rp500M+' }),

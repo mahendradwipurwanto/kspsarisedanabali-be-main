@@ -215,3 +215,23 @@ export const INTERNAL_ROUTES: { href: string; label: string }[] = [
   { href: '/kontak', label: 'Kontak' },
   { href: 'whatsapp', label: 'WhatsApp koperasi (nomor dari pengaturan)' },
 ]
+
+/**
+ * Resolve a stored media value to something an <img> can load.
+ *
+ * Image fields store the object key (`media/2026/09/…jpg`), so the same row
+ * works whether the bucket is public or still proxied. Absolute URLs and
+ * already-proxied paths pass through, so older rows keep rendering.
+ *
+ * - `publicBase`: the bucket's public URL, once it has a read policy.
+ * - `proxyBase`: origin of the website that hosts `/api/media/*` (the console
+ *   passes its own website URL; the website passes nothing and stays relative).
+ */
+export function mediaSrc(value: string | null | undefined, opts: { publicBase?: string; proxyBase?: string } = {}): string {
+  if (!value) return ''
+  if (/^https?:\/\//.test(value)) return value
+  if (value.startsWith('/api/media/')) return `${opts.proxyBase ?? ''}${value}`
+  if (value.startsWith('/')) return value
+  if (opts.publicBase) return `${opts.publicBase.replace(/\/$/, '')}/${value}`
+  return `${opts.proxyBase ?? ''}/api/media/${encodeURIComponent(value)}`
+}

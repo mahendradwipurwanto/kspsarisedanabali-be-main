@@ -163,6 +163,29 @@ async function seedBranches() {
   return ids
 }
 
+/**
+ * Brochure artwork carried over from the koperasi's current website (uploaded
+ * to the media library, served through the website's media proxy). Keyed by
+ * product slug; a product without an entry renders as a terms card.
+ */
+const PRODUCT_ART: Record<string, string> = {
+  'pinjaman-bunga-murah': '/api/media/media%2F2026%2F09%2F01M1MVKB41DD5AK1HZ6FV70KVB-produk-pinjaman-bunga-murah.jpg',
+  'pinjaman-mikro': '/api/media/media%2F2026%2F09%2F01M1MVKBHZ5DEHGDMZC8N1SVGP-produk-pinjaman-mikro.jpg',
+  'pinjaman-pensiunan': '/api/media/media%2F2026%2F09%2F01M1MVKC1G7T2CQATCNSQB0C69-produk-pinjaman-pensiunan.webp',
+  'pinjaman-1-pohon': '/api/media/media%2F2026%2F09%2F01M1MVKCFA4JHK68ZMXQMPD2CT-produk-pinjaman-1-pohon.webp',
+  'sijakop': '/api/media/media%2F2026%2F09%2F01M1MVKCS3TZ9SCFXT385CCBY0-produk-simpanan-sijakop.jpg',
+  'simapan': '/api/media/media%2F2026%2F09%2F01M1MVKDB4511Z6Y51WYP9359K-produk-simpanan-simapan.jpg',
+  'sipura': '/api/media/media%2F2026%2F09%2F01M1MVKDM7WQW80RJ4GNV68E22-produk-simpanan-sipura.jpg',
+  'sigemas': '/api/media/media%2F2026%2F09%2F01M1MVKDXF8GDQJ4DNWA7J6A75-produk-simpanan-sigemas.jpg',
+  'simpanan-sukarela': '/api/media/media%2F2026%2F09%2F01M1MVKECKKVTTYAZ3EC1Z980P-produk-simpanan-sukarela.jpg',
+}
+
+/** Glass-tower photo from the current website's Tentang Kami page; sits under the navy wash behind the hero rate card. */
+const HERO_ART = 'media/2026/09/01M1MW4XD38D6017P2PKDS5KP3-gedung-kaca-latar-banner.webp'
+
+/** The leaf mark cropped from the current website's logo. */
+const BRAND_MARK = '/api/media/media%2F2026%2F09%2F01M1MVK93R9JS11GGEH098DCCY-mark.png'
+
 async function seedProducts() {
   console.log('→ products')
   const rows = [
@@ -307,8 +330,8 @@ async function seedProducts() {
   for (const r of rows) {
     const [row] = await db
       .insert(t.products)
-      .values(r as typeof t.products.$inferInsert)
-      .onConflictDoUpdate({ target: t.products.slug, set: { ...(r as object), updatedAt: new Date() } })
+      .values({ ...r, image: PRODUCT_ART[r.slug] ?? '' } as typeof t.products.$inferInsert)
+      .onConflictDoUpdate({ target: t.products.slug, set: { ...(r as object), image: PRODUCT_ART[r.slug] ?? '', updatedAt: new Date() } })
       .returning({ id: t.products.id })
     ids[r.slug] = row!.id
   }
@@ -473,7 +496,7 @@ async function seedSettings() {
     social: { facebook: '', instagram: '', youtube: '' },
     header: DEFAULT_HEADER,
     footer: DEFAULT_FOOTER,
-    brand: DEFAULT_BRAND,
+    brand: { ...DEFAULT_BRAND, logo: BRAND_MARK, logoLight: BRAND_MARK },
     seoDefaults: {
       titleTemplate: '%s | KSP Sari Sedana Bali',
       defaultTitle: 'KSP Sari Sedana Bali — Koperasi Simpan Pinjam di Karangasem',
@@ -539,7 +562,7 @@ async function seedPages(userId: string) {
     isSystem: true,
     seo: {
       metaTitle: 'KSP Sari Sedana Bali — Koperasi Simpan Pinjam di Karangasem',
-      metaDescription: 'Koperasi Simpan Pinjam Sari Sedana Bali melayani simpanan berjangka, simpanan harian, dan pinjaman modal usaha di Karangasem sejak 2002. Bunga ringan, proses cepat, tiga kantor siap melayani.',
+      metaDescription: 'Koperasi Simpan Pinjam Sari Sedana Bali melayani simpanan berjangka, simpanan harian, dan pinjaman modal usaha di Karangasem sejak 2002. Bunga ringan, proses cepat.',
     },
     blocks: [
       { type: 'hero_banner', props: {
@@ -547,12 +570,12 @@ async function seedPages(userId: string) {
         autoplay: true,
         interval: 8,
         slides: [
-          { image: '', heading: 'Pinjaman 1 Pohon', subheading: 'Program pembiayaan bersama BPDLH untuk anggota pemilik pohon kayu. Bunga menurun, syarat sederhana, didampingi petugas dari pengajuan sampai pencairan.',
+          { image: HERO_ART, heading: 'Pinjaman 1 Pohon', subheading: 'Program pembiayaan bersama BPDLH untuk anggota pemilik pohon kayu. Bunga menurun, syarat sederhana, didampingi petugas dari pengajuan sampai pencairan.',
             bullets: [{ text: 'Suku bunga sampai dengan 0,9% menurun per bulan' }, { text: 'Syarat KTP suami/istri' }, { text: 'Agunan BPKB/SHM atau simpanan anggota' }, { text: 'Memiliki pohon kayu' }],
             ctaLabel: 'Lihat Detail Program', ctaHref: '/produk/pinjaman/pinjaman-1-pohon',
             secondaryLabel: 'Cari produk yang cocok', secondaryHref: '/profiling',
             featuredProduct: productIds['pinjaman-1-pohon'] ?? '' },
-          { image: '', heading: 'Pinjaman Bunga Murah', subheading: 'Modal usaha, renovasi rumah, atau kebutuhan mendesak dengan angsuran ringan dan proses yang tidak berbelit.',
+          { image: HERO_ART, heading: 'Pinjaman Bunga Murah', subheading: 'Modal usaha, renovasi rumah, atau kebutuhan mendesak dengan angsuran ringan dan proses yang tidak berbelit.',
             bullets: [{ text: 'Proses cepat, syarat mudah' }, { text: 'Didampingi petugas koperasi' }, { text: 'Angsuran tetap setiap bulan' }],
             ctaLabel: 'Hitung Simulasi Angsuran', ctaHref: '/simulasi',
             secondaryLabel: 'Lihat semua pinjaman', secondaryHref: '/produk/pinjaman',
