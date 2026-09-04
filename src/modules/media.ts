@@ -3,7 +3,7 @@ import { and, desc, eq, ilike, count } from 'drizzle-orm'
 import { presignSchema, confirmMediaSchema } from '../contracts/index.js'
 import { db, media, mediaFolders } from '../db/index.js'
 import { presignUpload, presignDownload, publicUrl, deleteObjects, PRIVATE_FOLDERS } from '../lib/storage.js'
-import { asyncHandler, validate, requireAuth, requirePermission, notFound, audit, validated, param } from '../middleware/index.js'
+import { asyncHandler, validate, requireAuth, requirePermission, notFound, audit, validated, param, ApiError } from '../middleware/index.js'
 
 export const mediaRouter: Router = Router()
 mediaRouter.use(requireAuth)
@@ -81,10 +81,18 @@ mediaRouter.patch(
   '/:id',
   requirePermission('media:upload'),
   asyncHandler(async (req, res) => {
+    // A PATCH must touch only the keys it carries. Setting every column from a
+    // partial body wiped the alt text whenever the caption alone was edited.
     const body = req.body as { alt?: string; caption?: string; folderId?: string | null }
+    const patch: Partial<typeof media.$inferInsert> = {}
+    if ('alt' in body) patch.alt = body.alt || null
+    if ('caption' in body) patch.caption = body.caption || null
+    if ('folderId' in body) patch.folderId = body.folderId ?? null
+    if (!Object.keys(patch).length) throw new ApiError(400, 'Tidak ada perubahan yang dikirim.', 'empty_patch')
+
     const [row] = await db
       .update(media)
-      .set({ alt: body.alt ?? null, caption: body.caption ?? null, folderId: body.folderId ?? null })
+      .set(patch)
       .where(eq(media.id, param(req, 'id')))
       .returning()
     if (!row) throw notFound('Berkas tidak ditemukan.')
