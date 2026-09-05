@@ -157,6 +157,12 @@ export const BLOCKS = {
         options: [{ value: 'all', label: 'Semua produk' }, { value: 'simpanan', label: 'Simpanan saja' }, { value: 'pinjaman', label: 'Pinjaman saja' }],
         default: 'all',
       }),
+      layout: field.select({
+        label: 'Tampilan',
+        options: [{ value: 'cards', label: 'Kartu (3 kolom)' }, { value: 'rows', label: 'Baris memanjang' }],
+        default: 'cards',
+        help: 'Kartu untuk sorotan di beranda; baris untuk daftar lengkap di halaman produk.',
+      }),
       limit: field.number({ label: 'Jumlah maksimal ditampilkan', min: 1, max: 24, default: 6 }),
       ctaLabel: field.text({ label: 'Tulisan tombol', max: 30, default: 'Lihat Semua Produk' }),
       ctaHref: field.link({ label: 'Tombol menuju ke', default: '/produk' }),
@@ -365,8 +371,14 @@ export const BLOCKS = {
       heading: field.text({ label: 'Judul bagian', max: 70 }),
       category: field.select({
         label: 'Jenis dokumen',
-        options: [{ value: 'laporan', label: 'Laporan tahunan' }, { value: 'legalitas', label: 'Legalitas & perizinan' }, { value: 'keuangan', label: 'Laporan keuangan' }, { value: 'lainnya', label: 'Lainnya' }],
-        default: 'laporan',
+        options: [
+          { value: 'all', label: 'Semua dokumen' },
+          { value: 'laporan', label: 'Laporan tahunan' },
+          { value: 'legalitas', label: 'Legalitas & perizinan' },
+          { value: 'keuangan', label: 'Laporan keuangan' },
+          { value: 'lainnya', label: 'Lainnya' },
+        ],
+        default: 'all',
       }),
     },
   }),
@@ -392,6 +404,102 @@ export const BLOCKS = {
         },
       }),
     },
+  }),
+
+  post_index: def({
+    type: 'post_index',
+    label: 'Daftar Berita Lengkap',
+    description: 'Semua berita dengan navigasi halaman. Untuk halaman /berita, bukan sorotan di beranda.',
+    category: 'Konten',
+    icon: 'newspaper',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Informasi terbaru' }),
+      heading: field.text({ label: 'Judul bagian', max: 70 }),
+      subtext: field.textarea({ label: 'Penjelasan singkat', max: 200, rows: 2 }),
+      perPage: field.number({ label: 'Berita per halaman', min: 3, max: 24, default: 9 }),
+      emptyTitle: field.text({ label: 'Judul saat belum ada berita', max: 60, default: 'Belum ada berita' }),
+      emptyBody: field.textarea({ label: 'Penjelasan saat belum ada berita', max: 200, rows: 2, default: 'Berita dan informasi terbaru akan tampil di sini.' }),
+    },
+  }),
+
+  job_list: def({
+    type: 'job_list',
+    label: 'Daftar Lowongan',
+    description: 'Lowongan kerja yang sedang dibuka, lengkap dengan tombol lamar.',
+    category: 'Konten',
+    icon: 'briefcase',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Karir' }),
+      heading: field.text({ label: 'Judul bagian', max: 70 }),
+      subtext: field.textarea({ label: 'Penjelasan singkat', max: 200, rows: 2 }),
+      emptyTitle: field.text({ label: 'Judul saat belum ada lowongan', max: 60, default: 'Belum ada lowongan saat ini' }),
+      emptyBody: field.textarea({ label: 'Penjelasan saat belum ada lowongan', max: 240, rows: 2, default: 'Belum ada posisi yang dibuka. Silakan cek kembali secara berkala atau kirim lamaran spontan ke kantor kami.' }),
+    },
+  }),
+
+  faq_index: def({
+    type: 'faq_index',
+    label: 'Tanya Jawab Lengkap',
+    description: 'Semua pertanyaan, dikelompokkan per kategori, dengan ajakan menghubungi di bawahnya.',
+    category: 'Konten',
+    icon: 'help',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Tanya jawab' }),
+      heading: field.text({ label: 'Judul bagian', max: 70 }),
+      category: field.select({
+        label: 'Kategori yang ditampilkan',
+        options: [
+          { value: 'all', label: 'Semua kategori' },
+          { value: 'umum', label: 'Umum' },
+          { value: 'keanggotaan', label: 'Keanggotaan' },
+          { value: 'simpanan', label: 'Simpanan' },
+          { value: 'pinjaman', label: 'Pinjaman' },
+        ],
+        default: 'all',
+      }),
+      grouped: field.boolean({ label: 'Kelompokkan per kategori', default: true }),
+      ctaHeading: field.text({ label: 'Judul ajakan di bawah', max: 70, default: 'Masih ada yang ingin ditanyakan?' }),
+      ctaBody: field.textarea({ label: 'Kalimat ajakan', max: 200, rows: 2, default: 'Petugas kami siap membantu lewat telepon, WhatsApp, atau di kantor cabang terdekat.' }),
+      primaryLabel: field.text({ label: 'Tombol utama', max: 30, default: 'Hubungi kami' }),
+      primaryHref: field.link({ label: 'Tombol utama menuju', default: '/kontak' }),
+      secondaryLabel: field.text({ label: 'Tombol kedua', max: 30, default: 'Lihat kantor terdekat' }),
+      secondaryHref: field.link({ label: 'Tombol kedua menuju', default: '/lokasi' }),
+    },
+  }),
+
+  simulation_tabs: def({
+    type: 'simulation_tabs',
+    label: 'Simulasi Pinjaman & Simpanan',
+    description: 'Kalkulator dua sisi: angsuran pinjaman dan hasil simpanan menurut tabel resmi koperasi.',
+    category: 'Produk',
+    icon: 'calculator',
+    headingLevel: null,
+    fields: {
+      defaultTab: field.select({
+        label: 'Sisi yang terbuka lebih dulu',
+        options: [{ value: 'pinjaman', label: 'Angsuran pinjaman' }, { value: 'simpanan', label: 'Hasil simpanan' }],
+        default: 'pinjaman',
+      }),
+      disclaimer: field.textarea({
+        label: 'Catatan di bawah hasil',
+        max: 240,
+        rows: 2,
+        default: 'Simulasi awal, bukan penawaran final. Angka resmi ditentukan setelah pengajuan dan survei oleh petugas.',
+      }),
+    },
+  }),
+
+  profiling_wizard: def({
+    type: 'profiling_wizard',
+    label: 'Pencari Produk (4 Pertanyaan)',
+    description: 'Empat pertanyaan singkat yang berujung pada rekomendasi produk dan data calon nasabah.',
+    category: 'Konversi',
+    icon: 'spark',
+    headingLevel: null,
+    fields: {},
   }),
 
   contact_cards: def({

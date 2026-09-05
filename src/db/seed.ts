@@ -5,6 +5,7 @@ import { eq, sql } from 'drizzle-orm'
 import { SYSTEM_ROLES, DEFAULT_HEADER, DEFAULT_FOOTER, DEFAULT_BRAND, DEFAULT_FOOTER_MENU, DEFAULT_QUICK_ACCESS, type SystemRoleKey } from '../contracts/index.js'
 import { db, sqlClient } from './index.js'
 import * as t from './schema.js'
+import { SYSTEM_ROUTE_PAGES } from './system-pages.js'
 import { hashPassword } from '../lib/auth.js'
 
 /**
@@ -697,7 +698,8 @@ async function seedPages(userId: string) {
     ],
   }
 
-  for (const p of [home, about, contact]) {
+
+  for (const p of [home, about, contact, ...SYSTEM_ROUTE_PAGES]) {
     const [row] = await db
       .insert(t.pages)
       .values({ title: p.title, slug: p.slug, status: 'published', isSystem: p.isSystem, seo: p.seo, publishedAt: new Date(), createdById: userId, updatedById: userId })
