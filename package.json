@@ -13,6 +13,7 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:reset-admin": "tsx src/db/reset-admin.ts",
     "db:studio": "drizzle-kit studio",
+    "storage:cors": "tsx src/scripts/set-bucket-cors.ts",
     "test": "vitest run"
   },
   "dependencies": {

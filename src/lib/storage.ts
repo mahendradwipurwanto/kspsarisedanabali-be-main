@@ -1,4 +1,12 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3'
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectsCommand,
+  GetBucketCorsCommand,
+  PutBucketCorsCommand,
+  type CORSRule,
+} from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ulid } from 'ulid'
 import { env } from './env.js'
@@ -114,3 +122,65 @@ export function publicUrl(key: string): string {
 }
 
 export const isStoragePublic = () => Boolean(env.STORAGE_PUBLIC_URL)
+
+/**
+ * CORS rules for the bucket.
+ *
+ * Without a rule the browser refuses a presigned PUT before it is sent, so every
+ * upload from the console and every CV on the careers form fails with nothing but
+ * a CORS error in the console; the same request from Node succeeds, which is how
+ * it went unnoticed until Sep 2026. Uploads now go through the API either way,
+ * but a rule restores the direct path, which is the better one for large files.
+ *
+ * The allowed origins are `corsOrigins`, the same list the API itself trusts, so
+ * there is one place to add a domain rather than two that can drift apart.
+ */
+export function bucketCorsRules(origins: string[]): CORSRule[] {
+  return [
+    {
+      AllowedOrigins: origins,
+      AllowedMethods: ['GET', 'HEAD', 'PUT'],
+      AllowedHeaders: ['*'],
+      ExposeHeaders: ['ETag'],
+      MaxAgeSeconds: 3600,
+    },
+  ]
+}
+
+export async function getBucketCors(): Promise<CORSRule[]> {
+  try {
+    const res = await s3.send(new GetBucketCorsCommand({ Bucket: env.STORAGE_BUCKET }))
+    return res.CORSRules ?? []
+  } catch (err) {
+    const code = (err as { name?: string }).name ?? ''
+    if (code === 'NoSuchCORSConfiguration' || code === 'NoSuchCORSConfigurationError') return []
+    throw err
+  }
+}
+
+export async function putBucketCors(rules: CORSRule[]) {
+  await s3.send(new PutBucketCorsCommand({ Bucket: env.STORAGE_BUCKET, CORSConfiguration: { CORSRules: rules } }))
+}
+
+/**
+ * The rule the hosting panel keeps for its own file browser.
+ *
+ * PutBucketCors replaces the whole configuration, so the first run of
+ * `npm run storage:cors` wrote our rule over this one. It is re-added when no
+ * rule covers the panel's origin, which repairs that and keeps a later run from
+ * doing the same damage twice.
+ */
+const PANEL_CORS_RULE: CORSRule = {
+  AllowedOrigins: ['https://sumopod.com'],
+  AllowedMethods: ['GET', 'PUT', 'DELETE', 'POST', 'HEAD'],
+  AllowedHeaders: ['*'],
+}
+
+/** Our rule, plus every rule that belongs to someone else. Ours is the one whose origins we all manage. */
+export function mergeCorsRules(existing: CORSRule[], origins: string[]): CORSRule[] {
+  const managed = new Set(origins)
+  const foreign = existing.filter((r) => !(r.AllowedOrigins ?? []).every((o) => managed.has(o)))
+  const covered = (origin: string) => foreign.some((r) => (r.AllowedOrigins ?? []).includes(origin))
+  const panel = covered('https://sumopod.com') ? [] : [PANEL_CORS_RULE]
+  return [...foreign, ...panel, ...bucketCorsRules(origins)]
+}
