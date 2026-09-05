@@ -40,7 +40,18 @@ export const NAV_MAIN = [
  * saved, and the values the seed writes on first run. Keeping them here — not
  * in the landing page — means the CMS form, the seed and the site all agree.
  */
+/**
+ * A navigation entry.
+ *
+ * `href` may be empty when the item has children: some groups exist only to
+ * open a dropdown ("Tentang", "Layanan") and have no page of their own. The
+ * header renders those as a heading that opens on hover rather than a link.
+ */
 export interface MenuItem { label: string; href: string; children?: MenuItem[] }
+
+/** True when this entry only opens its dropdown and leads nowhere itself. */
+export const isMenuGroup = (item: MenuItem): boolean =>
+  !item.href.trim() && Boolean(item.children?.length)
 
 export interface HeaderSettings {
   ctaLabel: string

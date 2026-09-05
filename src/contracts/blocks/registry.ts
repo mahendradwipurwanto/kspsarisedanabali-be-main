@@ -393,13 +393,33 @@ export const BLOCKS = {
     fields: {
       eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Tata kelola' }),
       heading: field.text({ label: 'Judul bagian', max: 70, default: 'Struktur Organisasi' }),
+      // No minimum: left empty the block falls back to Pengaturan → Legalitas &
+      // Organisasi, which is where the board is actually maintained. Requiring
+      // one here meant the page carrying this block could not be saved at all.
       groups: field.repeater({
-        label: 'Kelompok jabatan', itemLabel: 'Kelompok', min: 1, max: 10,
+        label: 'Kelompok jabatan', itemLabel: 'Kelompok', max: 10,
         of: {
           title: field.text({ label: 'Nama kelompok', required: true, max: 40, placeholder: 'Pengurus' }),
           members: field.repeater({
             label: 'Anggota', itemLabel: 'Orang', min: 1, max: 20,
             of: { name: field.text({ label: 'Nama', required: true, max: 80 }), role: field.text({ label: 'Jabatan', max: 60 }), photo: field.image({ label: 'Foto' }) },
+          }),
+        },
+      }),
+      // The tiers above and below the three governance groups. Each is a single
+      // box, so the chart can be drawn as a real hierarchy — Rapat Anggota at
+      // the top, the operational units at the bottom — without asking an editor
+      // to build a tree in nested repeaters.
+      apex: field.text({ label: 'Kotak teratas', max: 40, default: 'Rapat Anggota', help: 'Pemegang kekuasaan tertinggi koperasi. Kosongkan bila tidak ingin ditampilkan.' }),
+      audit: field.text({ label: 'Pengawas internal', max: 40, default: 'SPI', help: 'Muncul sebagai kotak di samping garis, seperti pada bagan resmi. Kosongkan bila tidak ada.' }),
+      operationsLead: field.text({ label: 'Pimpinan operasional', max: 40, default: 'Kepala Cabang' }),
+      units: field.repeater({
+        label: 'Unit kerja', itemLabel: 'Unit', max: 6,
+        of: {
+          title: field.text({ label: 'Nama unit', required: true, max: 40, placeholder: 'Kabag Dana' }),
+          roles: field.repeater({
+            label: 'Jabatan di bawahnya', itemLabel: 'Jabatan', max: 10,
+            of: { name: field.text({ label: 'Nama jabatan', required: true, max: 40, placeholder: 'Kasir' }) },
           }),
         },
       }),
