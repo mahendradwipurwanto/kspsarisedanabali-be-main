@@ -1,8 +1,8 @@
-import { Router } from 'express'
+import express, { Router } from 'express'
 import { and, desc, eq, ilike, count } from 'drizzle-orm'
 import { presignSchema, confirmMediaSchema } from '../contracts/index.js'
 import { db, media, mediaFolders } from '../db/index.js'
-import { presignUpload, presignDownload, publicUrl, deleteObjects, PRIVATE_FOLDERS } from '../lib/storage.js'
+import { presignUpload, presignDownload, publicUrl, deleteObjects, putObject, PRIVATE_FOLDERS } from '../lib/storage.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, audit, validated, param, ApiError } from '../middleware/index.js'
 
 export const mediaRouter: Router = Router()
@@ -74,6 +74,31 @@ mediaRouter.get(
       /** Surfaces "gambar belum punya keterangan" in the media library UI. */
       missingAlt: rows.filter((r) => !r.alt).length,
     })
+  }),
+)
+
+/**
+ * Upload through the API.
+ *
+ * The browser cannot PUT straight to the bucket until it carries a CORS rule,
+ * so the console posts the bytes here and the server writes them. The body
+ * limit is set on this route alone, so ordinary JSON routes stay small.
+ */
+mediaRouter.post(
+  '/upload',
+  requirePermission('media:upload'),
+  express.raw({ type: () => true, limit: '25mb' }),
+  asyncHandler(async (req, res) => {
+    const filename = String(req.header('x-filename') ?? '').trim()
+    const folder = String(req.header('x-folder') ?? 'media')
+    const contentType = req.header('content-type') ?? 'application/octet-stream'
+    if (!filename) throw new ApiError(400, 'Header x-filename wajib diisi.', 'missing_filename')
+    if (!['media', 'documents'].includes(folder)) throw new ApiError(400, 'Folder tidak dikenal.', 'bad_folder')
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new ApiError(400, 'Berkas kosong.', 'empty_file')
+
+    const saved = await putObject({ folder, filename, contentType, body: req.body })
+    await audit(req, { action: 'upload', entity: 'media', summary: saved.key })
+    res.json({ data: saved })
   }),
 )
 

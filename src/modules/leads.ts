@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import express, { Router } from 'express'
 import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, count } from 'drizzle-orm'
 import {
   publicLeadSchema, updateLeadSchema, profilingSessionSchema, normalisePhone,
@@ -10,7 +10,7 @@ import {
   ipRateLimit, audit, ApiError, validated, param
 } from '../middleware/index.js'
 import { hashIp } from '../lib/auth.js'
-import { presignUpload } from '../lib/storage.js'
+import { presignUpload, putObject } from '../lib/storage.js'
 import { env } from '../lib/env.js'
 import { recommendProduct } from './recommend.js'
 
@@ -180,6 +180,30 @@ publicLeadRouter.post(
       size: body.size,
     })
     res.json({ data: presigned })
+  }),
+)
+
+/**
+ * Upload a CV through the API.
+ *
+ * The presigned PUT above only works once the bucket carries a CORS rule
+ * allowing the website's origin; until then the browser refuses to send it and
+ * an applicant sees "gagal mengunggah" with nothing in the log. Same limits as
+ * the presign: `cv/` only, PDF or DOC, 5 MB, rate limited by IP.
+ */
+publicLeadRouter.post(
+  '/job-applications/upload',
+  ipRateLimit(8, 600),
+  express.raw({ type: () => true, limit: '5mb' }),
+  asyncHandler(async (req, res) => {
+    const filename = String(req.header('x-filename') ?? '').trim()
+    const contentType = req.header('content-type') ?? ''
+    if (!filename) throw new ApiError(422, 'Nama berkas tidak ada.', 'validation_error')
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new ApiError(422, 'Berkas kosong.', 'validation_error')
+    if (req.body.length > 5 * 1024 * 1024) throw new ApiError(422, 'Ukuran CV maksimal 5 MB.', 'file_too_large')
+
+    const saved = await putObject({ folder: 'cv', filename, contentType, body: req.body })
+    res.json({ data: { key: saved.key, size: saved.size } })
   }),
 )
 

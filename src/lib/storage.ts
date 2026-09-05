@@ -71,6 +71,23 @@ export async function presignUpload(opts: {
   return { url, key, method: 'PUT', headers: { 'Content-Type': opts.contentType }, expiresIn: 600 }
 }
 
+/**
+ * Upload from the server.
+ *
+ * The presigned-PUT flow needs a CORS rule on the bucket allowing the console's
+ * origin; without one the browser refuses the request before it is sent. This
+ * takes the bytes through the API instead, which no browser policy can block.
+ */
+export async function putObject(opts: { folder: string; filename: string; contentType: string; body: Buffer }) {
+  const allowed = ALLOWED_BY_FOLDER[opts.folder] ?? ALLOWED_IMAGE
+  if (!allowed.includes(opts.contentType)) {
+    throw Object.assign(new Error(`Tipe berkas ${opts.contentType} tidak diizinkan`), { status: 400 })
+  }
+  const key = buildKey(opts.folder, opts.filename)
+  await s3.send(new PutObjectCommand({ Bucket: env.STORAGE_BUCKET, Key: key, ContentType: opts.contentType, Body: opts.body }))
+  return { key, size: opts.body.length }
+}
+
 export const presignDownload = (key: string, expiresIn = 300) =>
   getSignedUrl(s3, new GetObjectCommand({ Bucket: env.STORAGE_BUCKET, Key: key }), { expiresIn })
 
