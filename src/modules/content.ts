@@ -100,8 +100,19 @@ function crud(opts: CrudOptions): Router {
     '/:id',
     requirePermission(...(opts.permissions.delete ?? opts.permissions.write)),
     asyncHandler(async (req, res) => {
-      if (opts.softDelete) await db.update(opts.table).set({ deletedAt: new Date() } as never).where(eq(t.id!, param(req, 'id')))
-      else await db.delete(opts.table).where(eq(t.id!, param(req, 'id')))
+      if (opts.softDelete) {
+        const patch: Record<string, unknown> = { deletedAt: new Date() }
+        // A soft-deleted row keeps its slug, and the slug is unique, so the
+        // address could never be used again: an editor who deleted a product
+        // and recreated it was told the slug was taken by a row they could no
+        // longer see. Deleting releases it.
+        if (t.slug) {
+          const [row] = await db.select().from(opts.table).where(eq(t.id!, param(req, 'id'))).limit(1)
+          const slug = (row as Record<string, unknown> | undefined)?.slug
+          if (typeof slug === 'string') patch.slug = `${slug.slice(0, 90)}__dihapus__${Date.now()}`
+        }
+        await db.update(opts.table).set(patch as never).where(eq(t.id!, param(req, 'id')))
+      } else await db.delete(opts.table).where(eq(t.id!, param(req, 'id')))
       await audit(req, { action: 'delete', entity: opts.entity, entityId: param(req, 'id') })
       await revalidateLp([opts.entity])
       res.json({ ok: true })

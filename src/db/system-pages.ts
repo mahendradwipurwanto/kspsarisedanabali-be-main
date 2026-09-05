@@ -57,6 +57,66 @@ export const SYSTEM_ROUTE_PAGES: SystemPage[] = [
     ],
   },
   {
+    title: 'Produk Simpanan',
+    slug: 'produk-simpanan',
+    isSystem: true,
+    seo: {
+      metaTitle: 'Produk Simpanan Koperasi di Karangasem',
+      metaDescription:
+        'Pilihan produk simpanan KSP Sari Sedana Bali: SIJAKOP berjangka, SIMAPAN berencana, SIPURA hari raya, SIGEMAS berhadiah, dan Simpanan Sukarela harian.',
+    },
+    blocks: [
+      { type: 'page_header', props: {
+        eyebrow: 'Produk simpanan',
+        heading: 'Produk Simpanan KSP Sari Sedana Bali di Karangasem',
+        subheading:
+          'Simpanan berjangka dan simpanan harian dengan imbal hasil kompetitif. Dana Anda aman di koperasi berbadan hukum resmi yang dipercaya menyalurkan dana pemerintah.',
+        align: 'left',
+      } },
+      { type: 'product_grid', props: {
+        eyebrow: '', heading: 'Semua produk simpanan', subtext: '',
+        category: 'simpanan', layout: 'rows', limit: 24,
+        ctaLabel: 'Lihat tabel simpanan', ctaHref: '/simulasi?jenis=simpanan',
+      } },
+      { type: 'profiling_cta', props: {
+        eyebrow: 'Panduan cepat',
+        heading: 'Belum yakin simpanan mana yang cocok?',
+        body: 'Jawab 4 pertanyaan singkat, kami tunjukkan produk yang paling sesuai beserta perkiraan hasilnya.',
+        ctaLabel: 'Mulai, ±30 detik', ctaHref: '/profiling', note: 'Tanpa perlu daftar akun.',
+      } },
+    ],
+  },
+  {
+    title: 'Produk Pinjaman',
+    slug: 'produk-pinjaman',
+    isSystem: true,
+    seo: {
+      metaTitle: 'Produk Pinjaman Koperasi di Karangasem',
+      metaDescription:
+        'Pilihan produk pinjaman KSP Sari Sedana Bali Karangasem: pinjaman bunga murah, pinjaman mikro untuk UMKM, pinjaman pensiunan, dan Pinjaman 1 Pohon bersama BPDLH.',
+    },
+    blocks: [
+      { type: 'page_header', props: {
+        eyebrow: 'Produk pinjaman',
+        heading: 'Produk Pinjaman KSP Sari Sedana Bali di Karangasem',
+        subheading:
+          'Pembiayaan untuk modal usaha, renovasi rumah, pendidikan, upacara adat, dan kebutuhan lainnya, dengan angsuran yang bisa dihitung sendiri sebelum mengajukan.',
+        align: 'left',
+      } },
+      { type: 'product_grid', props: {
+        eyebrow: '', heading: 'Semua produk pinjaman', subtext: '',
+        category: 'pinjaman', layout: 'rows', limit: 24,
+        ctaLabel: 'Hitung simulasi angsuran', ctaHref: '/simulasi',
+      } },
+      { type: 'profiling_cta', props: {
+        eyebrow: 'Panduan cepat',
+        heading: 'Belum yakin pinjaman mana yang cocok?',
+        body: 'Jawab 4 pertanyaan singkat, kami tunjukkan produk yang paling sesuai beserta simulasi angsurannya.',
+        ctaLabel: 'Mulai, ±30 detik', ctaHref: '/profiling', note: 'Tanpa perlu daftar akun.',
+      } },
+    ],
+  },
+  {
     title: 'Berita',
     slug: 'berita',
     isSystem: true,

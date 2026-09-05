@@ -11,6 +11,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
+    "db:sync-pages": "tsx src/db/sync-system-pages.ts",
     "db:reset-admin": "tsx src/db/reset-admin.ts",
     "db:studio": "drizzle-kit studio",
     "storage:cors": "tsx src/scripts/set-bucket-cors.ts",

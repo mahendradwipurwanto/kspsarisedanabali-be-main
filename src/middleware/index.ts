@@ -207,6 +207,16 @@ export const notFoundHandler: RequestHandler = (_req, res) => {
   res.status(404).json({ error: { message: 'Endpoint tidak ditemukan.', code: 'not_found' } })
 }
 
+interface PgError { code?: string; constraint_name?: string; detail?: string }
+
+/** The driver error inside however many wrappers the query builder added. */
+function pgError(err: unknown, depth = 0): PgError | null {
+  if (!err || typeof err !== 'object' || depth > 4) return null
+  const e = err as PgError & { cause?: unknown }
+  if (typeof e.code === 'string' && /^\d{5}$/.test(e.code)) return e
+  return pgError(e.cause, depth + 1)
+}
+
 export const errorHandler = (err: unknown, req: Request, res: Response, next: NextFunction) => {
   // The response deadline may already have answered 503; writing again would
   // only throw ERR_HTTP_HEADERS_SENT on top of the real error.
@@ -219,9 +229,19 @@ export const errorHandler = (err: unknown, req: Request, res: Response, next: Ne
       error: { message: 'Data tidak valid.', code: 'validation_error', details: err.issues.map((i) => ({ field: i.path.join('.'), message: i.message })) },
     })
   }
-  const e = err as { code?: string; constraint_name?: string; message?: string }
-  if (e?.code === '23505') {
-    return res.status(409).json({ error: { message: 'Data dengan nilai tersebut sudah ada.', code: 'conflict', details: e.constraint_name } })
+  // Drizzle wraps the driver's error, so the unique violation is usually one or
+  // two `cause` levels down; reading only the top level turned a duplicate slug
+  // into "Terjadi kesalahan pada server", which tells an editor nothing.
+  const pg = pgError(err)
+  if (pg?.code === '23505') {
+    const column = pg.constraint_name?.replace(/^[a-z_]+?_/, '').replace(/_uq$|_key$|_unique$/, '')
+    return res.status(409).json({
+      error: {
+        message: column ? `Sudah ada data lain dengan ${column} yang sama.` : 'Data dengan nilai tersebut sudah ada.',
+        code: 'conflict',
+        details: pg.constraint_name,
+      },
+    })
   }
   console.error('Unhandled error', { path: req.path, method: req.method, err })
   res.status(500).json({ error: { message: 'Terjadi kesalahan pada server.', code: 'internal_error' } })

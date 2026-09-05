@@ -269,8 +269,17 @@ pageRouter.delete(
     const [row] = await db.select().from(pages).where(eq(pages.id, param(req, 'id'))).limit(1)
     if (!row) throw notFound('Halaman tidak ditemukan.')
     if (row.isSystem) throw new ApiError(400, 'Halaman sistem tidak bisa dihapus.', 'system_page')
-    await db.update(pages).set({ deletedAt: new Date() }).where(eq(pages.id, row.id))
+    // The slug is released with the row: it stays unique in the database, so
+    // keeping it would block ever creating that address again, and nothing can
+    // restore a deleted page anyway.
+    await db
+      .update(pages)
+      .set({ deletedAt: new Date(), slug: `${row.slug.slice(0, 90)}__dihapus__${Date.now()}` })
+      .where(eq(pages.id, row.id))
     await audit(req, { action: 'delete', entity: 'page', entityId: row.id, summary: row.title })
+    // Without this the deleted page stayed on the site, in the footer and in the
+    // sitemap until its cache window expired.
+    await revalidateLp(['pages', `page:${row.slug}`, 'sitemap'])
     res.json({ ok: true })
   }),
 )
