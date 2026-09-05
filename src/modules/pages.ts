@@ -5,6 +5,9 @@ import { pageSchema, validateBlockProps, getBlock, scoreSeo, canPublish } from '
 import { db, pages, pageBlocks, pageRevisions, pagePreviews, users } from '../db/index.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
+// Page writes revalidate the shared `pages` tag as well as the slug: the home
+// page is stored as "/" but fetched by the site as "home", so a slug-only tag
+// never matched it.
 
 export const pageRouter: Router = Router()
 pageRouter.use(requireAuth)
@@ -209,7 +212,7 @@ pageRouter.patch(
     }
 
     await audit(req, { action: 'update', entity: 'page', entityId: existing.id, summary: updated!.title })
-    if (updated!.status === 'published') await revalidateLp([`page:${updated!.slug}`])
+    if (updated!.status === 'published') await revalidateLp(['pages', `page:${updated!.slug}`])
 
     res.json({ data: updated })
   }),
@@ -239,7 +242,7 @@ pageRouter.post(
       .returning()
 
     await audit(req, { action: 'publish', entity: 'page', entityId: row.id, summary: row.title })
-    await revalidateLp([`page:${row.slug}`, 'sitemap'])
+    await revalidateLp(['pages', `page:${row.slug}`, 'sitemap'])
     res.json({ data: updated, seo })
   }),
 )
@@ -254,7 +257,7 @@ pageRouter.post(
       .where(and(eq(pages.id, param(req, 'id')), eq(pages.isSystem, false)))
       .returning()
     if (!updated) throw notFound('Halaman tidak ditemukan atau tidak bisa ditarik.')
-    await revalidateLp([`page:${updated.slug}`, 'sitemap'])
+    await revalidateLp(['pages', `page:${updated.slug}`, 'sitemap'])
     res.json({ data: updated })
   }),
 )
