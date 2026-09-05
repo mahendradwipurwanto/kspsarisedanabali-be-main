@@ -9,9 +9,22 @@ import {
 
 export const publicRouter: Router = Router()
 
-/** Public reads are cacheable; the CMS busts them by tag on publish. */
-const cache = (res: Parameters<Parameters<Router['get']>[1]>[1], seconds = 300) => {
-  res.setHeader('Cache-Control', `public, s-maxage=${seconds}, stale-while-revalidate=86400`)
+/**
+ * Public reads are not cached by a CDN in front of this API.
+ *
+ * The website is the only consumer and it caches these responses itself, keyed
+ * by tag, dropping them the moment an editor publishes. A CDN in front of the
+ * API defeats exactly that: the site re-fetches on cue and is handed the same
+ * stale JSON, so an edit cannot appear however well revalidation works.
+ *
+ * It read `public, s-maxage=3600, stale-while-revalidate=86400`, and on Vercel
+ * that is what it means — a menu the editor had already changed was still being
+ * served from the edge 42 minutes later, and would have been served stale for a
+ * day. The comment here used to say the CMS busts these by tag; nothing ever
+ * busted a CDN it did not know about.
+ */
+const cache = (res: Parameters<Parameters<Router['get']>[1]>[1]) => {
+  res.setHeader('Cache-Control', 'no-store')
 }
 
 const withImage = <T extends { image?: string | null }>(row: T) => ({ ...row, image: publicUrl(row.image ?? '') })
@@ -104,7 +117,7 @@ publicRouter.get(
   '/branches',
   asyncHandler(async (_req, res) => {
     const rows = await db.select().from(branches).where(eq(branches.isActive, true)).orderBy(asc(branches.sortOrder))
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows.map(withImage) })
   }),
 )
@@ -114,7 +127,7 @@ publicRouter.get(
   asyncHandler(async (req, res) => {
     const [row] = await db.select().from(branches).where(and(eq(branches.slug, param(req, 'slug')), eq(branches.isActive, true))).limit(1)
     if (!row) throw notFound('Kantor tidak ditemukan.')
-    cache(res, 3600)
+    cache(res)
     res.json({ data: withImage(row) })
   }),
 )
@@ -207,7 +220,7 @@ publicRouter.get(
   '/post-categories',
   asyncHandler(async (_req, res) => {
     const rows = await db.select().from(postCategories).orderBy(asc(postCategories.name))
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows })
   }),
 )
@@ -249,7 +262,7 @@ publicRouter.get(
   '/faqs',
   asyncHandler(async (_req, res) => {
     const rows = await db.select().from(faqs).where(eq(faqs.isActive, true)).orderBy(asc(faqs.sortOrder))
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows })
   }),
 )
@@ -259,7 +272,7 @@ publicRouter.get(
   asyncHandler(async (req, res) => {
     const limit = Math.min(Number(req.query.limit ?? 12), 50)
     const rows = await db.select().from(testimonials).where(eq(testimonials.isActive, true)).orderBy(asc(testimonials.sortOrder)).limit(limit)
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows.map((r) => ({ ...r, avatar: publicUrl(r.avatar ?? '') })) })
   }),
 )
@@ -268,7 +281,7 @@ publicRouter.get(
   '/stats',
   asyncHandler(async (_req, res) => {
     const rows = await db.select().from(stats).where(eq(stats.isActive, true)).orderBy(asc(stats.sortOrder))
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows })
   }),
 )
@@ -282,7 +295,7 @@ publicRouter.get(
       .from(documents)
       .where(and(eq(documents.isPublic, true), category ? eq(documents.category, category) : undefined))
       .orderBy(desc(documents.year), asc(documents.sortOrder))
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows.map((r) => ({ ...r, url: publicUrl(r.fileKey) })) })
   }),
 )
@@ -311,7 +324,7 @@ publicRouter.get(
       const rows = await db.select().from(settings)
       settingsCache = { at: Date.now(), data: Object.fromEntries(rows.map((r) => [r.key, r.value])) }
     }
-    cache(res, 600)
+    cache(res)
     res.json({ data: settingsCache.data })
   }),
 )
@@ -320,7 +333,7 @@ publicRouter.get(
   '/menus/:key',
   asyncHandler(async (req, res) => {
     const [row] = await db.select().from(menus).where(eq(menus.key, param(req, 'key'))).limit(1)
-    cache(res, 3600)
+    cache(res)
     res.json({ data: row?.items ?? [] })
   }),
 )
@@ -337,7 +350,7 @@ publicRouter.get(
       db.select({ slug: branches.slug, updatedAt: branches.updatedAt }).from(branches).where(eq(branches.isActive, true)),
       db.select({ slug: jobs.slug, updatedAt: jobs.updatedAt }).from(jobs).where(eq(jobs.isActive, true)),
     ])
-    cache(res, 600)
+    cache(res)
     res.json({ data: { pages: pageRows, products: productRows, posts: postRows, branches: branchRows, jobs: jobRows } })
   }),
 )
@@ -349,7 +362,7 @@ publicRouter.get(
       .select({ fromPath: redirects.fromPath, toPath: redirects.toPath, statusCode: redirects.statusCode })
       .from(redirects)
       .where(eq(redirects.isActive, true))
-    cache(res, 3600)
+    cache(res)
     res.json({ data: rows })
   }),
 )
@@ -363,7 +376,7 @@ publicRouter.get(
       db.select().from(stats).where(eq(stats.isActive, true)).orderBy(asc(stats.sortOrder)),
       db.select().from(settings),
     ])
-    cache(res, 600)
+    cache(res)
     res.json({
       data: {
         branches: branchRows.map(withImage),
