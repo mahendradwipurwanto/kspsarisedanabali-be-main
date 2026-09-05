@@ -212,9 +212,11 @@ pageRouter.patch(
     }
 
     await audit(req, { action: 'update', entity: 'page', entityId: existing.id, summary: updated!.title })
-    if (updated!.status === 'published') await revalidateLp(['pages', `page:${updated!.slug}`])
+    const refresh = updated!.status === 'published'
+      ? await revalidateLp(['pages', `page:${updated!.slug}`])
+      : { ok: true }
 
-    res.json({ data: updated })
+    res.json({ data: updated, refreshed: refresh.ok, refreshError: 'reason' in refresh ? refresh.reason : undefined })
   }),
 )
 
@@ -242,8 +244,8 @@ pageRouter.post(
       .returning()
 
     await audit(req, { action: 'publish', entity: 'page', entityId: row.id, summary: row.title })
-    await revalidateLp(['pages', `page:${row.slug}`, 'sitemap'])
-    res.json({ data: updated, seo })
+    const refresh = await revalidateLp(['pages', `page:${row.slug}`, 'sitemap'])
+    res.json({ data: updated, seo, refreshed: refresh.ok, refreshError: refresh.reason })
   }),
 )
 
@@ -257,8 +259,8 @@ pageRouter.post(
       .where(and(eq(pages.id, param(req, 'id')), eq(pages.isSystem, false)))
       .returning()
     if (!updated) throw notFound('Halaman tidak ditemukan atau tidak bisa ditarik.')
-    await revalidateLp(['pages', `page:${updated.slug}`, 'sitemap'])
-    res.json({ data: updated })
+    const refresh = await revalidateLp(['pages', `page:${updated.slug}`, 'sitemap'])
+    res.json({ data: updated, refreshed: refresh.ok, refreshError: refresh.reason })
   }),
 )
 
@@ -279,8 +281,8 @@ pageRouter.delete(
     await audit(req, { action: 'delete', entity: 'page', entityId: row.id, summary: row.title })
     // Without this the deleted page stayed on the site, in the footer and in the
     // sitemap until its cache window expired.
-    await revalidateLp(['pages', `page:${row.slug}`, 'sitemap'])
-    res.json({ ok: true })
+    const refresh = await revalidateLp(['pages', `page:${row.slug}`, 'sitemap'])
+    res.json({ ok: true, refreshed: refresh.ok, refreshError: refresh.reason })
   }),
 )
 

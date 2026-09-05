@@ -74,8 +74,8 @@ function crud(opts: CrudOptions): Router {
     asyncHandler(async (req, res) => {
       const [row] = await db.insert(opts.table).values(req.body as never).returning()
       await audit(req, { action: 'create', entity: opts.entity, entityId: (row as Record<string, string>).id })
-      await revalidateLp(opts.tags?.(row as Record<string, unknown>) ?? [opts.entity])
-      res.status(201).json({ data: row })
+      const refresh = await revalidateLp(opts.tags?.(row as Record<string, unknown>) ?? [opts.entity])
+      res.status(201).json({ data: row, refreshed: refresh.ok, refreshError: refresh.reason })
     }),
   )
 
@@ -91,8 +91,8 @@ function crud(opts: CrudOptions): Router {
         .returning()
       if (!row) throw notFound()
       await audit(req, { action: 'update', entity: opts.entity, entityId: param(req, 'id') })
-      await revalidateLp(opts.tags?.(row as Record<string, unknown>) ?? [opts.entity])
-      res.json({ data: row })
+      const refresh = await revalidateLp(opts.tags?.(row as Record<string, unknown>) ?? [opts.entity])
+      res.json({ data: row, refreshed: refresh.ok, refreshError: refresh.reason })
     }),
   )
 
@@ -114,8 +114,8 @@ function crud(opts: CrudOptions): Router {
         await db.update(opts.table).set(patch as never).where(eq(t.id!, param(req, 'id')))
       } else await db.delete(opts.table).where(eq(t.id!, param(req, 'id')))
       await audit(req, { action: 'delete', entity: opts.entity, entityId: param(req, 'id') })
-      await revalidateLp([opts.entity])
-      res.json({ ok: true })
+      const refresh = await revalidateLp([opts.entity])
+      res.json({ ok: true, refreshed: refresh.ok, refreshError: refresh.reason })
     }),
   )
 
@@ -352,8 +352,8 @@ settingsRouter.put(
     }
     invalidateSettingsCache()
     await audit(req, { action: 'update', entity: 'settings', summary: Object.keys(body).join(', ') })
-    await revalidateLp(['settings'])
-    res.json({ ok: true })
+    const refresh = await revalidateLp(['settings'])
+    res.json({ ok: true, refreshed: refresh.ok, refreshError: refresh.reason })
   }),
 )
 
@@ -379,7 +379,7 @@ menuRouter.put(
       .values({ key: param(req, 'key'), name: body.name ?? param(req, 'key'), items: body.items })
       .onConflictDoUpdate({ target: menus.key, set: { items: body.items, updatedAt: new Date() } })
       .returning()
-    await revalidateLp(['menus'])
-    res.json({ data: row })
+    const refresh = await revalidateLp(['menus'])
+    res.json({ data: row, refreshed: refresh.ok, refreshError: refresh.reason })
   }),
 )
