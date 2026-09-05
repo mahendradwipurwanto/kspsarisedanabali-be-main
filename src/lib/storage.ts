@@ -2,7 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
-  DeleteObjectsCommand,
+  DeleteObjectCommand,
   GetBucketCorsCommand,
   PutBucketCorsCommand,
   type CORSRule,
@@ -99,11 +99,22 @@ export async function putObject(opts: { folder: string; filename: string; conten
 export const presignDownload = (key: string, expiresIn = 300) =>
   getSignedUrl(s3, new GetObjectCommand({ Bucket: env.STORAGE_BUCKET, Key: key }), { expiresIn })
 
+/**
+ * Removes objects from the bucket, one request each.
+ *
+ * Two things had to change for this to work at all. The command used to be
+ * spread into a plain object before `send`, which strips the prototype the
+ * client dispatches through, so every delete threw `command.resolveMiddleware
+ * is not a function` and the file stayed in the bucket — deleting media in the
+ * console removed only the row. And the batch DeleteObjects call this provider
+ * implements demands a Content-MD5 header that the current SDK does not send,
+ * answering "Missing required header for this request: Content-MD5". Deleting
+ * one key at a time sidesteps both; the volumes here are a handful of files.
+ */
 export async function deleteObjects(keys: string[]) {
-  if (!keys.length) return
-  await s3.send({
-    ...new DeleteObjectsCommand({ Bucket: env.STORAGE_BUCKET, Delete: { Objects: keys.map((Key) => ({ Key })) } }),
-  } as DeleteObjectsCommand)
+  for (const Key of keys.filter(Boolean)) {
+    await s3.send(new DeleteObjectCommand({ Bucket: env.STORAGE_BUCKET, Key }))
+  }
 }
 
 /**

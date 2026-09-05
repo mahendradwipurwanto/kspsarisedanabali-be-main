@@ -39,6 +39,7 @@ import { pageRouter } from './modules/pages.js'
 import { mediaRouter } from './modules/media.js'
 import { userRouter, roleRouter, auditRouter } from './modules/users.js'
 import { trackRouter, analyticsRouter } from './modules/analytics.js'
+import { retentionRouter } from './modules/retention.js'
 import {
   productRouter, branchRouter, postRouter, postCategoryRouter, jobRouter, faqRouter,
   testimonialRouter, documentRouter, statRouter, redirectRouter, settingsRouter, menuRouter,
@@ -97,6 +98,7 @@ export function createApp(): Express {
   app.use('/v1/public', publicRouter)
   app.use('/v1/public', publicLeadRouter)
   app.use('/v1/track', trackRouter)
+  app.use('/v1/cron', retentionRouter)
 
   app.use('/v1/pages', pageRouter)
   app.use('/v1/media', mediaRouter)
