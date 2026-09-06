@@ -9,14 +9,6 @@ export const slugSchema = z
   .max(60, 'Maksimal 60 karakter')
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Gunakan huruf kecil dan tanda hubung saja')
 
-/** Indonesian mobile numbers, normalised to 62xxxxxxxxxx. */
-export const phoneSchema = z
-  .string()
-  .trim()
-  .min(8, 'Nomor terlalu pendek')
-  .max(20, 'Nomor terlalu panjang')
-  .regex(/^[0-9+\-\s()]+$/, 'Hanya angka dan tanda + - ( )')
-
 export function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, '')
   if (digits.startsWith('62')) return digits
@@ -24,6 +16,36 @@ export function normalisePhone(raw: string): string {
   if (digits.startsWith('8')) return `62${digits}`
   return digits
 }
+
+/*
+ * One rule for every phone number the koperasi collects or publishes, shared
+ * by the website's forms, the console's record forms and the API, so a number
+ * a visitor could type is a number staff can call back.
+ */
+export const PHONE_HINT = 'Angka saja, tanpa spasi. Contoh: 081234567890'
+export const PHONE_ERROR = 'Nomor harus berupa angka, 9–15 digit, diawali 0 atau 62. Contoh: 081234567890'
+export const EMAIL_ERROR = 'Format email tidak valid. Contoh: nama@email.com'
+export const URL_ERROR = 'Tautan harus diawali https://'
+
+/** An Indonesian number once normalised: country code plus 8 to 13 digits. */
+export const isValidPhone = (raw: string): boolean => /^62\d{8,13}$/.test(normalisePhone(raw))
+export const isValidEmail = (raw: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim())
+export const isValidUrl = (raw: string): boolean => /^https:\/\/[^\s]+\.[^\s]+$/i.test(raw.trim())
+
+/** What a phone input keeps as someone types: digits, and a plus only at the start. */
+export const cleanPhoneInput = (raw: string): string => raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '').slice(0, 16)
+
+/** Indonesian numbers, normalised to 62xxxxxxxxxx. */
+export const phoneSchema = z
+  .string()
+  .trim()
+  .min(8, 'Nomor terlalu pendek')
+  .max(20, 'Nomor terlalu panjang')
+  .regex(/^[0-9+\-\s()]+$/, 'Hanya angka dan tanda + - ( )')
+  .refine(isValidPhone, PHONE_ERROR)
+
+/** A phone field that may be left empty, for records rather than leads. */
+export const optionalPhoneSchema = phoneSchema.optional().or(z.literal(''))
 
 /* ------------------------------------ SEO ---------------------------------- */
 
@@ -395,9 +417,9 @@ export const branchSchema = z.object({
   regency: z.string().max(120).default('Karangasem'),
   province: z.string().max(120).default('Bali'),
   postalCode: z.string().max(10).optional().or(z.literal('')),
-  phone: z.string().max(40).optional().or(z.literal('')),
-  whatsapp: z.string().max(40).optional().or(z.literal('')),
-  email: z.string().email().optional().or(z.literal('')),
+  phone: optionalPhoneSchema,
+  whatsapp: optionalPhoneSchema,
+  email: z.string().email(EMAIL_ERROR).optional().or(z.literal('')),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   mapsUrl: z.string().url().optional().or(z.literal('')),

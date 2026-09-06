@@ -73,7 +73,30 @@ export interface FooterSettings {
   secondaryHref: string
   showBranches: boolean
   bottomNote: string
+  /** Show the social icons under the description. */
+  showSocial: boolean
+  /** Small heading above the icons; empty hides the heading only. */
+  socialHeading: string
 }
+
+/**
+ * Social channels the footer can link to, edited under Pengaturan → Footer.
+ * The order here is the order of the icons; an empty address hides its icon.
+ */
+export const SOCIAL_PLATFORMS = [
+  { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/…' },
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/…' },
+  { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@…' },
+  { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@…' },
+  { key: 'x', label: 'X (Twitter)', placeholder: 'https://x.com/…' },
+  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/company/…' },
+  { key: 'telegram', label: 'Telegram', placeholder: 'https://t.me/…' },
+] as const
+
+export type SocialKey = (typeof SOCIAL_PLATFORMS)[number]['key']
+export type SocialSettings = Record<SocialKey, string>
+
+export const DEFAULT_SOCIAL: SocialSettings = { facebook: '', instagram: '', youtube: '', tiktok: '', x: '', linkedin: '', telegram: '' }
 
 export interface BrandSettings {
   name: string
@@ -101,6 +124,8 @@ export const DEFAULT_FOOTER: FooterSettings = {
   secondaryHref: '/lokasi',
   showBranches: true,
   bottomNote: '',
+  showSocial: true,
+  socialHeading: 'Ikuti kami',
 }
 
 export const DEFAULT_BRAND: BrandSettings = {

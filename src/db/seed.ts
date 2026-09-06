@@ -2,7 +2,7 @@ import 'dotenv/config'
 
 import { randomBytes } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
-import { SYSTEM_ROLES, DEFAULT_HEADER, DEFAULT_FOOTER, DEFAULT_BRAND, DEFAULT_APPS, DEFAULT_FOOTER_MENU, DEFAULT_QUICK_ACCESS, type SystemRoleKey } from '../contracts/index.js'
+import { SYSTEM_ROLES, DEFAULT_HEADER, DEFAULT_FOOTER, DEFAULT_BRAND, DEFAULT_APPS, DEFAULT_SOCIAL, DEFAULT_FOOTER_MENU, DEFAULT_QUICK_ACCESS, type SystemRoleKey } from '../contracts/index.js'
 import { db, sqlClient } from './index.js'
 import * as t from './schema.js'
 import { SYSTEM_ROUTE_PAGES } from './system-pages.js'
@@ -494,7 +494,7 @@ async function seedSettings() {
       { label: 'Badan Hukum', value: 'No. 20/BH/KKPUKM/IX/2002', date: '16 September 2002' },
       { label: 'Badan Hukum', value: 'Nomor AHU-003334.AH.01.39.TAHUN 2024', date: '06 Agustus 2024' },
     ],
-    social: { facebook: '', instagram: '', youtube: '' },
+    social: DEFAULT_SOCIAL,
     header: DEFAULT_HEADER,
     footer: DEFAULT_FOOTER,
     apps: DEFAULT_APPS,
