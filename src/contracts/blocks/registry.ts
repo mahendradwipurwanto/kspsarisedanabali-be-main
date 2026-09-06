@@ -697,6 +697,12 @@ export const BLOCKS = {
       bullets: field.repeater({ label: 'Poin keunggulan', itemLabel: 'Poin', max: 5, of: { text: field.text({ label: 'Teks', required: true, max: 80 }) } }),
       image: field.image({ label: 'Gambar aplikasi', help: 'Tangkapan layar atau mockup ponsel, ideal 800×1000 piksel dengan latar transparan.' }),
       alt: field.text({ label: 'Teks alternatif gambar', max: 120, help: 'Kosongkan untuk memakai nama aplikasi.' }),
+      frame: field.select({
+        label: 'Tampilan gambar',
+        options: [{ value: 'phone', label: 'Di dalam bingkai ponsel' }, { value: 'plain', label: 'Gambar apa adanya' }],
+        default: 'phone',
+        help: 'Bingkai ponsel cocok untuk tangkapan layar aplikasi. Pilih "apa adanya" bila gambarnya sudah berupa mockup.',
+      }),
       buttons: field.select({
         label: 'Tombol yang ditampilkan',
         options: [
