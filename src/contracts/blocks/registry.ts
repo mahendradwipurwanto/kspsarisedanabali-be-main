@@ -45,15 +45,24 @@ export const BLOCKS = {
   hero_banner: def({
     type: 'hero_banner',
     label: 'Banner Utama',
-    description: 'Banner besar di paling atas beranda, bisa lebih dari satu slide.',
+    description: 'Banner besar di paling atas beranda: tampilan komponen dengan kartu angka, atau gambar banner penuh.',
     category: 'Utama',
     icon: 'image',
     headingLevel: 'h1',
     singleton: true,
     fields: {
-      badge: field.text({ label: 'Label kecil di atas judul', max: 40, default: 'Program unggulan', help: 'Muncul sebagai lencana kecil. Kosongkan untuk menyembunyikan.' }),
+      style: field.select({
+        label: 'Gaya banner',
+        options: [
+          { value: 'component', label: 'Komponen: judul, tombol, dan kartu angka produk' },
+          { value: 'banner', label: 'Gambar banner penuh (seperti spanduk)' },
+        ],
+        default: 'component',
+        help: 'Gaya "komponen" memakai kolom Slide banner di bawah. Gaya "gambar banner" memakai kolom Gambar banner penuh.',
+      }),
+      badge: field.text({ label: 'Label kecil di atas judul', max: 40, default: 'Program unggulan', help: 'Hanya untuk gaya komponen. Muncul sebagai lencana kecil; kosongkan untuk menyembunyikan.' }),
       slides: field.repeater({
-        label: 'Slide banner', itemLabel: 'Slide', min: 1, max: 6,
+        label: 'Slide banner', itemLabel: 'Slide', max: 6, help: 'Hanya untuk gaya komponen.',
         of: {
           image: field.image({ label: 'Gambar banner', help: 'Ukuran ideal 1600×900 piksel. Kosongkan untuk latar polos bermotif.' }),
           heading: field.text({ label: 'Judul di banner', required: true, max: 70 }),
@@ -65,6 +74,32 @@ export const BLOCKS = {
           secondaryHref: field.link({ label: 'Tombol kedua menuju ke', placeholder: '/profiling', default: '/profiling' }),
           featuredProduct: field.reference({ label: 'Produk yang ditampilkan di kartu angka', to: 'product', help: 'Kartu di sisi kanan menampilkan suku bunga, plafon, dan tenor produk ini. Kosongkan untuk memakai poin keunggulan saja.' }),
         },
+      }),
+      // The banner style: whole-width artwork, the way the koperasi's printed
+      // spanduk look. Text is optional and sits over the picture; the first
+      // banner's heading is still the page's H1 so Google has a title to read.
+      banners: field.repeater({
+        label: 'Gambar banner penuh', itemLabel: 'Banner', max: 6,
+        help: 'Hanya untuk gaya gambar banner. Ukuran ideal 1920×820 piksel; di ponsel gambar dipotong ke 4:3, jadi letakkan pesan utama di tengah.',
+        of: {
+          image: field.image({ label: 'Gambar', required: true }),
+          alt: field.text({ label: 'Teks alternatif', required: true, max: 120, help: 'Dibaca mesin pencari dan pembaca layar. Tulis pesan yang ada di gambar.' }),
+          heading: field.text({ label: 'Judul di atas gambar', max: 70, help: 'Kosongkan bila gambar sudah memuat judulnya sendiri.' }),
+          subheading: field.textarea({ label: 'Kalimat pendukung', max: 160 }),
+          ctaLabel: field.text({ label: 'Tulisan tombol', max: 30 }),
+          ctaHref: field.link({ label: 'Tombol menuju ke' }),
+          link: field.link({ label: 'Seluruh banner menuju ke', help: 'Dipakai bila tidak ada tombol: seluruh gambar bisa diklik.' }),
+        },
+      }),
+      bannerText: field.select({
+        label: 'Teks di gambar banner',
+        options: [{ value: 'overlay', label: 'Tampilkan judul dan tombol di atas gambar' }, { value: 'none', label: 'Gambar saja (judul tetap dibaca mesin pencari)' }],
+        default: 'overlay',
+      }),
+      bannerHeight: field.select({
+        label: 'Tinggi gambar banner',
+        options: [{ value: 'wide', label: 'Pendek dan lebar (21:9)' }, { value: 'standard', label: 'Standar (16:9)' }, { value: 'tall', label: 'Tinggi (3:2)' }],
+        default: 'wide',
       }),
       autoplay: field.boolean({ label: 'Ganti slide otomatis', default: true }),
       interval: field.number({ label: 'Jeda antar slide (detik)', min: 3, max: 30, default: 8 }),
@@ -534,6 +569,146 @@ export const BLOCKS = {
       heading: field.text({ label: 'Judul bagian', max: 70, default: 'Hubungi Kantor Kami' }),
       showHours: field.boolean({ label: 'Tampilkan jam buka', default: true }),
       showMap: field.boolean({ label: 'Tampilkan peta', default: true }),
+    },
+  }),
+
+  /* ──────────────────────── free-form sections ─────────────────────────── */
+
+  media_text: def({
+    type: 'media_text',
+    label: 'Gambar & Teks',
+    description: 'Satu gambar di samping judul, teks, poin, dan tombol. Untuk memperkenalkan layanan, program, atau kantor.',
+    category: 'Konten',
+    icon: 'image',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40 }),
+      heading: field.text({ label: 'Judul bagian', required: true, max: 70 }),
+      body: field.richtext({ label: 'Isi teks' }),
+      bullets: field.repeater({ label: 'Poin-poin', itemLabel: 'Poin', max: 6, of: { text: field.text({ label: 'Teks', required: true, max: 100 }) } }),
+      image: field.image({ label: 'Gambar', required: true, help: 'Ukuran ideal 1200×900 piksel.' }),
+      alt: field.text({ label: 'Teks alternatif gambar', max: 120, help: 'Dibaca mesin pencari dan pembaca layar, dan dihitung sebagai keterangan gambar oleh penilai SEO.' }),
+      imagePosition: field.select({ label: 'Posisi gambar', options: [{ value: 'right', label: 'Kanan' }, { value: 'left', label: 'Kiri' }], default: 'right' }),
+      imageRatio: field.select({ label: 'Rasio gambar', options: [{ value: '4/3', label: '4:3' }, { value: '1/1', label: 'Persegi' }, { value: '16/9', label: '16:9' }, { value: '3/4', label: 'Tegak (3:4)' }], default: '4/3' }),
+      ctaLabel: field.text({ label: 'Tulisan tombol', max: 30 }),
+      ctaHref: field.link({ label: 'Tombol menuju ke' }),
+      secondaryLabel: field.text({ label: 'Tulisan tombol kedua', max: 30 }),
+      secondaryHref: field.link({ label: 'Tombol kedua menuju ke' }),
+    },
+  }),
+
+  steps: def({
+    type: 'steps',
+    label: 'Langkah-langkah',
+    description: 'Proses bernomor: cara menjadi anggota, mengajukan pinjaman, atau membuka simpanan.',
+    category: 'Konten',
+    icon: 'list',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Caranya mudah' }),
+      heading: field.text({ label: 'Judul bagian', required: true, max: 70 }),
+      intro: field.textarea({ label: 'Pengantar singkat', max: 220, rows: 2 }),
+      items: field.repeater({
+        label: 'Langkah', itemLabel: 'Langkah', min: 2, max: 8,
+        of: {
+          title: field.text({ label: 'Judul langkah', required: true, max: 60 }),
+          body: field.textarea({ label: 'Penjelasan', max: 200, rows: 2 }),
+          icon: field.icon({ label: 'Ikon', help: 'Kosongkan untuk memakai nomor urut.' }),
+        },
+      }),
+      layout: field.select({ label: 'Tata letak', options: [{ value: 'grid', label: 'Berjajar (kotak)' }, { value: 'list', label: 'Berurutan ke bawah' }], default: 'grid' }),
+      ctaLabel: field.text({ label: 'Tulisan tombol', max: 30 }),
+      ctaHref: field.link({ label: 'Tombol menuju ke' }),
+    },
+  }),
+
+  timeline: def({
+    type: 'timeline',
+    label: 'Lini Masa',
+    description: 'Perjalanan koperasi tahun demi tahun: berdiri, badan hukum, kantor baru, penghargaan.',
+    category: 'Konten',
+    icon: 'clock',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Perjalanan kami' }),
+      heading: field.text({ label: 'Judul bagian', required: true, max: 70, default: 'Sejarah Koperasi' }),
+      items: field.repeater({
+        label: 'Peristiwa', itemLabel: 'Peristiwa', min: 1, max: 20,
+        of: {
+          period: field.text({ label: 'Tahun / periode', required: true, max: 20, placeholder: '2002' }),
+          title: field.text({ label: 'Judul peristiwa', required: true, max: 80 }),
+          body: field.textarea({ label: 'Penjelasan', max: 240, rows: 2 }),
+          image: field.image({ label: 'Foto (opsional)' }),
+          alt: field.text({ label: 'Teks alternatif foto', max: 120, help: 'Kosongkan untuk memakai judul peristiwa.' }),
+        },
+      }),
+    },
+  }),
+
+  video_embed: def({
+    type: 'video_embed',
+    label: 'Video',
+    description: 'Video YouTube di dalam halaman: profil koperasi, panduan layanan, atau liputan kegiatan.',
+    category: 'Media',
+    icon: 'video',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40 }),
+      heading: field.text({ label: 'Judul bagian', max: 70 }),
+      url: field.text({ label: 'Tautan video YouTube', required: true, max: 200, placeholder: 'https://www.youtube.com/watch?v=…', help: 'Tautan watch, youtu.be, atau shorts. Video diputar dari youtube-nocookie.com.' }),
+      caption: field.textarea({ label: 'Keterangan di bawah video', max: 200, rows: 2 }),
+      width: field.select({ label: 'Lebar', options: [{ value: 'narrow', label: 'Sedang, di tengah' }, { value: 'wide', label: 'Selebar halaman' }], default: 'narrow' }),
+    },
+  }),
+
+  logo_cloud: def({
+    type: 'logo_cloud',
+    label: 'Logo Mitra',
+    description: 'Deretan logo mitra, lembaga pengawas, atau pendukung koperasi.',
+    category: 'Media',
+    icon: 'award',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40 }),
+      heading: field.text({ label: 'Judul bagian', max: 70, default: 'Mitra & Pendukung' }),
+      logos: field.repeater({
+        label: 'Logo', itemLabel: 'Logo', min: 1, max: 12,
+        of: {
+          image: field.image({ label: 'Gambar logo', required: true, help: 'PNG atau SVG dengan latar transparan.' }),
+          alt: field.text({ label: 'Nama lembaga', required: true, max: 60, help: 'Dipakai sebagai teks alternatif logo.' }),
+          href: field.link({ label: 'Tautan (opsional)' }),
+        },
+      }),
+      muted: field.boolean({ label: 'Tampilkan abu-abu, berwarna saat disorot', default: true }),
+    },
+  }),
+
+  app_download: def({
+    type: 'app_download',
+    label: 'Unduh Aplikasi',
+    description: 'Ajakan memasang aplikasi koperasi dengan tombol App Store dan Google Play. Tautan tokonya diatur di Pengaturan → Aplikasi.',
+    category: 'Konversi',
+    icon: 'smartphone',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Aplikasi' }),
+      heading: field.text({ label: 'Judul bagian', required: true, max: 70, default: 'Layanan koperasi di genggaman Anda' }),
+      body: field.textarea({ label: 'Penjelasan', max: 240, rows: 3, default: 'Cek saldo, ajukan pinjaman, dan pantau angsuran dari ponsel, kapan saja.' }),
+      bullets: field.repeater({ label: 'Poin keunggulan', itemLabel: 'Poin', max: 5, of: { text: field.text({ label: 'Teks', required: true, max: 80 }) } }),
+      image: field.image({ label: 'Gambar aplikasi', help: 'Tangkapan layar atau mockup ponsel, ideal 800×1000 piksel dengan latar transparan.' }),
+      alt: field.text({ label: 'Teks alternatif gambar', max: 120, help: 'Kosongkan untuk memakai nama aplikasi.' }),
+      buttons: field.select({
+        label: 'Tombol yang ditampilkan',
+        options: [
+          { value: 'stores', label: 'Dua tombol: App Store dan Google Play' },
+          { value: 'smart', label: 'Satu tombol yang mengarah ke toko sesuai perangkat' },
+          { value: 'both', label: 'Dua tombol toko ditambah tautan pintar' },
+        ],
+        default: 'stores',
+        help: 'Tautan pintar membuka /aplikasi: iPhone diarahkan ke App Store, Android ke Google Play.',
+      }),
+      smartLabel: field.text({ label: 'Tulisan tombol tautan pintar', max: 30, default: 'Unduh aplikasi' }),
+      tone: field.select({ label: 'Warna latar', options: [{ value: 'dark', label: 'Gelap' }, { value: 'light', label: 'Terang' }], default: 'dark' }),
     },
   }),
 } satisfies Record<string, BlockDef>

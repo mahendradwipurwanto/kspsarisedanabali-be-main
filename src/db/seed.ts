@@ -2,7 +2,7 @@ import 'dotenv/config'
 
 import { randomBytes } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
-import { SYSTEM_ROLES, DEFAULT_HEADER, DEFAULT_FOOTER, DEFAULT_BRAND, DEFAULT_FOOTER_MENU, DEFAULT_QUICK_ACCESS, type SystemRoleKey } from '../contracts/index.js'
+import { SYSTEM_ROLES, DEFAULT_HEADER, DEFAULT_FOOTER, DEFAULT_BRAND, DEFAULT_APPS, DEFAULT_FOOTER_MENU, DEFAULT_QUICK_ACCESS, type SystemRoleKey } from '../contracts/index.js'
 import { db, sqlClient } from './index.js'
 import * as t from './schema.js'
 import { SYSTEM_ROUTE_PAGES } from './system-pages.js'
@@ -497,6 +497,7 @@ async function seedSettings() {
     social: { facebook: '', instagram: '', youtube: '' },
     header: DEFAULT_HEADER,
     footer: DEFAULT_FOOTER,
+    apps: DEFAULT_APPS,
     brand: { ...DEFAULT_BRAND, logo: BRAND_MARK, logoLight: BRAND_MARK },
     seoDefaults: {
       titleTemplate: '%s | KSP Sari Sedana Bali',

@@ -110,6 +110,35 @@ export const DEFAULT_BRAND: BrandSettings = {
   logoLight: '',
 }
 
+/**
+ * The koperasi's mobile app, edited under Pengaturan → Aplikasi.
+ *
+ * One place for the store links, read by every "Unduh Aplikasi" block and by
+ * the smart link at APP_SMART_LINK, which sends a phone to its own store.
+ */
+export interface AppSettings {
+  appName: string
+  appStoreUrl: string
+  playStoreUrl: string
+  /** Custom scheme or universal link the installed app answers to. Empty skips the attempt. */
+  deepLink: string
+  /** Send a phone straight to its store when it opens the smart link. */
+  autoRedirect: boolean
+  /** Shown on the smart-link page to desktop visitors and when a store is not set. */
+  note: string
+}
+
+export const APP_SMART_LINK = '/aplikasi'
+
+export const DEFAULT_APPS: AppSettings = {
+  appName: 'Aplikasi KSP Sari Sedana Bali',
+  appStoreUrl: '',
+  playStoreUrl: '',
+  deepLink: '',
+  autoRedirect: true,
+  note: 'Buka tautan ini dari ponsel Anda untuk langsung memasang aplikasi.',
+}
+
 export const DEFAULT_QUICK_ACCESS = [
   { icon: 'spark', title: 'Cari Produk yang Cocok', body: '4 pertanyaan singkat, ±30 detik', href: '/profiling' },
   { icon: 'calculator', title: 'Simulasi Angsuran', body: 'Hitung perkiraan cicilan bulanan', href: '/simulasi' },
@@ -224,6 +253,7 @@ export const INTERNAL_ROUTES: { href: string; label: string }[] = [
   { href: '/karir', label: 'Karir' },
   { href: '/laporan-keuangan', label: 'Laporan keuangan' },
   { href: '/kontak', label: 'Kontak' },
+  { href: '/aplikasi', label: 'Unduh aplikasi (diarahkan ke toko sesuai perangkat)' },
   { href: 'whatsapp', label: 'WhatsApp koperasi (nomor dari pengaturan)' },
 ]
 
