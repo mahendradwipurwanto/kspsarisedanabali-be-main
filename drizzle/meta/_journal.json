@@ -22,6 +22,20 @@
       "when": 1788196105476,
       "tag": "0002_aspiring_kree",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788707563292,
+      "tag": "0003_security_sessions_mfa",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788708361164,
+      "tag": "0004_totp_last_step",
+      "breakpoints": true
     }
   ]
 }

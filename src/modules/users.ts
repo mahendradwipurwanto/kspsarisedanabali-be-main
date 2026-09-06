@@ -3,7 +3,7 @@ import { and, asc, desc, eq, isNull, ne, sql, count } from 'drizzle-orm'
 import { createUserSchema, updateUserSchema, roleSchema, PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LIST } from '../contracts/index.js'
 import { db, users, roles, userRoles, userBranches, branches, refreshTokens, auditLogs } from '../db/index.js'
 import { hashPassword } from '../lib/auth.js'
-import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param } from '../middleware/index.js'
+import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param, endSessions } from '../middleware/index.js'
 
 export const userRouter: Router = Router()
 export const roleRouter: Router = Router()
@@ -100,7 +100,7 @@ userRouter.patch(
     }
     // Permissions changed → existing access tokens are stale. Force a refresh.
     if (body.roleIds || body.branchIds || body.isActive === false || body.password) {
-      await db.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.userId, existing.id))
+      await db.update(refreshTokens).set({ revokedAt: new Date(), revokedReason: 'admin' }).where(eq(refreshTokens.userId, existing.id))
     }
 
     await audit(req, { action: 'update', entity: 'user', entityId: existing.id })
@@ -128,6 +128,24 @@ async function assertNotLastSuperAdmin(userId: string, nextRoleIds: string[]) {
     throw new ApiError(400, 'Ini satu-satunya Super Admin yang aktif. Tunjuk Super Admin lain terlebih dahulu.', 'last_super_admin')
   }
 }
+
+/**
+ * Sign one person out everywhere: a lost laptop, a leaver, a suspected
+ * compromise. The rows are revoked with reason 'admin' and the session cache
+ * is dropped, so their next request is refused, not their next refresh.
+ */
+userRouter.delete(
+  '/:id/sessions',
+  requirePermission('users:write'),
+  asyncHandler(async (req, res) => {
+    const id = param(req, 'id')
+    const [existing] = await db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1)
+    if (!existing) throw notFound('Pengguna')
+    const ended = await endSessions(existing.id, 'admin')
+    await audit(req, { action: 'sessions_revoked', entity: 'user', entityId: existing.id, summary: `Semua sesi ${existing.name} diakhiri oleh admin (${ended})` })
+    res.json({ ok: true, ended })
+  }),
+)
 
 userRouter.delete(
   '/:id',

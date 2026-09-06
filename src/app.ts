@@ -84,8 +84,13 @@ export function createApp(): Express {
       credentials: true,
     }),
   )
-  app.use(express.json({ limit: '1mb' }))
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+  // The raw bytes are kept for request signatures: the console signs the body
+  // it sent, and the server must hash exactly those bytes, not a re-serialised
+  // object. The media upload is read raw before authentication for the same reason.
+  const keepRaw = (req: express.Request, _res: express.Response, buf: Buffer) => { req.rawBody = buf }
+  app.use('/v1/media/upload', express.raw({ type: () => true, limit: '25mb' }))
+  app.use(express.json({ limit: '1mb', verify: keepRaw }))
+  app.use(express.urlencoded({ extended: true, limit: '1mb', verify: keepRaw }))
   app.use(cookieParser())
   app.use(attachIp)
   app.use(responseDeadline())

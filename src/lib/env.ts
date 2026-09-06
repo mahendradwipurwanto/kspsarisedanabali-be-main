@@ -20,6 +20,18 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
   ACCESS_TTL_MIN: z.coerce.number().default(15),
   REFRESH_TTL_DAYS: z.coerce.number().default(30),
+  /** Seals TOTP secrets and session signing keys at rest. 32+ chars; keep it out of git. */
+  DATA_ENCRYPTION_KEY: z.string().default(''),
+  /** A session that is not used for this long ends, whatever its remaining lifetime. */
+  SESSION_IDLE_MIN: z.coerce.number().default(720),
+  /** Signing in beyond this many live sessions ends the oldest one. */
+  SESSION_MAX_PER_USER: z.coerce.number().default(5),
+  /** Role keys that must have a second factor before they can work in the console. */
+  MFA_REQUIRED_ROLES: z.string().default(''),
+  /** `required`: every authenticated request must carry a valid signature; `optional`: verified when present; `off`. */
+  REQUEST_SIGNING: z.enum(['required', 'optional', 'off']).default('required'),
+  /** How far a signed request's timestamp may drift from the server clock. */
+  SIGNATURE_WINDOW_SEC: z.coerce.number().default(120),
 
   STORAGE_ENDPOINT: z.string().url(),
   STORAGE_REGION: z.string().default('kencana'),
@@ -48,6 +60,13 @@ if (!parsed.success) {
 export const env = parsed.data
 
 export const corsOrigins = env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+export const mfaRequiredRoles = env.MFA_REQUIRED_ROLES.split(',').map((s) => s.trim()).filter(Boolean)
+
+if (!env.DATA_ENCRYPTION_KEY) {
+  const message = 'DATA_ENCRYPTION_KEY is not set — TOTP secrets and session keys fall back to a key derived from JWT_REFRESH_SECRET.'
+  if (env.NODE_ENV === 'production') throw new Error(message.replace(' fall back to', ' would fall back to') + ' Set it before deploying.')
+  console.warn(`⚠  ${message}`)
+}
 
 if (env.NODE_ENV === 'production' && env.DATABASE_SSL !== 'require') {
   console.warn(

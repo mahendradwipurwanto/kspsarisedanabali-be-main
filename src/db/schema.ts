@@ -19,8 +19,15 @@ export const users = pgTable(
     passwordHash: text('password_hash').notNull(),
     avatarKey: text('avatar_key'),
     isActive: boolean('is_active').notNull().default(true),
+    /** Sealed with the data key (AES-256-GCM); never stored in the clear. */
     totpSecret: text('totp_secret'),
     totpEnabled: boolean('totp_enabled').notNull().default(false),
+    totpVerifiedAt: timestamp('totp_verified_at', { withTimezone: true }),
+  /** Last accepted TOTP step, so a code seen in transit cannot be replayed inside its window. */
+  totpLastStep: integer('totp_last_step'),
+    /** SHA-256 of each unused recovery code. A used code is removed. */
+    recoveryCodes: jsonb('recovery_codes').$type<string[]>().notNull().default([]),
+    passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -73,8 +80,19 @@ export const refreshTokens = pgTable(
     tokenHash: text('token_hash').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    /** Why it ended: logout, rotated, reuse, idle, limit, password, mfa, admin. */
+    revokedReason: varchar('revoked_reason', { length: 40 }),
+    /** The row that took over on rotation; a replay of this row is then theft. */
+    replacedById: uuid('replaced_by_id'),
     userAgent: text('user_agent'),
+    /** A short device summary derived from the user agent, for the sessions list. */
+    label: varchar('label', { length: 120 }),
     ip: varchar('ip', { length: 60 }),
+    /** Per-session HMAC key for request signatures, sealed with the data key. */
+    signingKey: text('signing_key'),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+    /** When the second factor was passed for this session. */
+    mfaAt: timestamp('mfa_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index('refresh_tokens_user_idx').on(t.userId), uniqueIndex('refresh_tokens_hash_uq').on(t.tokenHash)],

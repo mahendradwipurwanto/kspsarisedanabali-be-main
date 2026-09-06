@@ -1,4 +1,5 @@
-import { SignJWT, jwtVerify } from 'jose'
+import { randomUUID } from 'node:crypto'
+import { SignJWT, jwtVerify, EncryptJWT, jwtDecrypt } from 'jose'
 import bcrypt from 'bcryptjs'
 import { createHash, randomBytes } from 'node:crypto'
 import { env } from './env.js'
@@ -11,7 +12,9 @@ import { env } from './env.js'
 const BCRYPT_COST = 11
 
 const accessKey = new TextEncoder().encode(env.JWT_ACCESS_SECRET)
-const refreshKey = new TextEncoder().encode(env.JWT_REFRESH_SECRET)
+/** The refresh cookie is encrypted, not merely signed: 32 bytes derived from the refresh secret. */
+const refreshKey = createHash('sha256').update(`refresh-jwe:${env.JWT_REFRESH_SECRET}`).digest()
+const challengeKey = new TextEncoder().encode(`mfa-challenge:${env.JWT_ACCESS_SECRET}`)
 
 export const hashPassword = (plain: string) => bcrypt.hash(plain, BCRYPT_COST)
 export const verifyPassword = (plain: string, hash: string) => bcrypt.compare(plain, hash)
@@ -23,6 +26,10 @@ export interface AccessClaims {
   permissions: string[]
   branchIds: string[]
   roles: string[]
+  /** The session this token belongs to; revoking the session kills the token at once. */
+  sid?: string
+  /** Second factor passed on this session. */
+  mfa?: boolean
 }
 
 export async function signAccessToken(claims: AccessClaims) {
@@ -58,19 +65,44 @@ export function hashIp(ip: string) {
   return createHash('sha256').update(ip + env.IP_HASH_SALT).digest('hex').slice(0, 32)
 }
 
-export async function signRefreshJwt(userId: string, tokenId: string) {
-  return new SignJWT({ tid: tokenId })
-    .setProtectedHeader({ alg: 'HS256' })
+/**
+ * The refresh cookie: an encrypted token (JWE, A256GCM) carrying the session row
+ * id and the raw refresh secret. Encrypted rather than signed so nothing about
+ * the session — not even its id — can be read off the cookie.
+ */
+export async function sealRefreshCookie(userId: string, tokenId: string, raw: string) {
+  return new EncryptJWT({ tid: tokenId, rt: raw })
+    .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
     .setSubject(userId)
     .setIssuedAt()
     .setExpirationTime(`${env.REFRESH_TTL_DAYS}d`)
-    .sign(refreshKey)
+    .encrypt(refreshKey)
 }
 
-export async function verifyRefreshJwt(token: string) {
+export async function openRefreshCookie(token: string) {
   try {
-    const { payload } = await jwtVerify(token, refreshKey)
-    return { userId: payload.sub as string, tokenId: payload.tid as string }
+    const { payload } = await jwtDecrypt(token, refreshKey)
+    return { userId: payload.sub as string, tokenId: payload.tid as string, raw: payload.rt as string }
+  } catch {
+    return null
+  }
+}
+
+/** Between the password and the second factor: five minutes, one purpose, nothing else it can do. */
+export async function signMfaChallenge(userId: string) {
+  return new SignJWT({ purpose: 'mfa' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(userId)
+    .setJti(randomUUID())
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(challengeKey)
+}
+
+export async function verifyMfaChallenge(token: string): Promise<{ userId: string; jti: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, challengeKey)
+    return payload.purpose === 'mfa' && typeof payload.sub === 'string' && typeof payload.jti === 'string' ? { userId: payload.sub, jti: payload.jti } : null
   } catch {
     return null
   }
