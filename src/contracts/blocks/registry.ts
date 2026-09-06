@@ -92,9 +92,13 @@ export const BLOCKS = {
         },
       }),
       bannerText: field.select({
-        label: 'Teks di gambar banner',
-        options: [{ value: 'overlay', label: 'Tampilkan judul dan tombol di atas gambar' }, { value: 'none', label: 'Gambar saja (judul tetap dibaca mesin pencari)' }],
+        label: 'Judul (H1) di gambar banner',
+        options: [
+          { value: 'overlay', label: 'Tampilkan: judul, kalimat pendukung, dan tombol di atas gambar' },
+          { value: 'none', label: 'Sembunyikan: gambar saja, judul tetap ada untuk Google dan pembaca layar' },
+        ],
         default: 'overlay',
+        help: 'Judul banner pertama adalah H1 halaman ini. Disembunyikan pun ia tetap ditulis di kode halaman, hanya tidak terlihat.',
       }),
       bannerHeight: field.select({
         label: 'Tinggi gambar banner',
