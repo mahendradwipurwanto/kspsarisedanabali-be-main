@@ -1,5 +1,7 @@
 /** Facts about the cooperative, taken from the legal documents and the current site. */
 
+import { field, type FieldMap } from './fields.js'
+
 export const SITE = {
   legalName: 'Koperasi Simpan Pinjam Sari Sedana Bali',
   shortName: 'KSP Sari Sedana Bali',
@@ -53,6 +55,9 @@ export interface MenuItem { label: string; href: string; children?: MenuItem[] }
 export const isMenuGroup = (item: MenuItem): boolean =>
   !item.href.trim() && Boolean(item.children?.length)
 
+/** One entry of the bottom bar phones get: an icon over a short word. */
+export interface BottomNavItem { icon: string; label: string; href: string }
+
 export interface HeaderSettings {
   ctaLabel: string
   ctaHref: string
@@ -62,6 +67,28 @@ export interface HeaderSettings {
   /** Sticky announcement above the header. Empty hides it. */
   announcement: string
   announcementHref: string
+  /** The bar pinned to the bottom of phone screens, beside the hamburger menu. */
+  showBottomNav: boolean
+  /** At most five: any more and the labels no longer fit a phone. */
+  bottomNav: BottomNavItem[]
+}
+
+export const BOTTOM_NAV_MAX = 5
+
+/**
+ * The bottom bar's editor form, as a field map so the console renders it with
+ * the same icon picker and link suggestions every block gets.
+ */
+export const BOTTOM_NAV_FIELDS: FieldMap = {
+  items: field.repeater({
+    label: 'Tombol di menu bawah', itemLabel: 'Tombol', min: 2, max: BOTTOM_NAV_MAX,
+    help: 'Dua sampai lima tombol. Tampil di ponsel saja, sebagai bar tetap di bagian bawah layar.',
+    of: {
+      icon: field.icon({ label: 'Ikon', required: true, default: 'home' }),
+      label: field.text({ label: 'Tulisan', required: true, max: 12, help: 'Satu kata pendek; ruangnya sempit.' }),
+      href: field.link({ label: 'Menuju ke', required: true }),
+    },
+  }),
 }
 
 export interface FooterSettings {
@@ -113,6 +140,13 @@ export const DEFAULT_HEADER: HeaderSettings = {
   profilingLabel: 'Cari produk',
   announcement: '',
   announcementHref: '',
+  showBottomNav: true,
+  bottomNav: [
+    { icon: 'home', label: 'Beranda', href: '/' },
+    { icon: 'wallet', label: 'Produk', href: '/produk' },
+    { icon: 'calculator', label: 'Simulasi', href: '/simulasi' },
+    { icon: 'newspaper', label: 'Berita', href: '/berita' },
+  ],
 }
 
 export const DEFAULT_FOOTER: FooterSettings = {
@@ -258,8 +292,8 @@ export const directionsLink = (lat: number, lng: number, label?: string) =>
  * so an editor can never type a name the site does not know.
  */
 export const ICON_NAMES = [
-  'spark', 'calculator', 'map-pin', 'phone', 'users', 'trending-up', 'wallet', 'handshake', 'piggy-bank', 'award',
-  'star', 'shield-check', 'building', 'percent', 'briefcase', 'file-text', 'mail', 'clock', 'compass', 'leaf', 'check',
+  'home', 'spark', 'calculator', 'map-pin', 'phone', 'users', 'trending-up', 'wallet', 'handshake', 'piggy-bank', 'award',
+  'star', 'shield-check', 'building', 'percent', 'briefcase', 'file-text', 'newspaper', 'mail', 'clock', 'compass', 'leaf', 'check',
 ] as const
 export type IconName = (typeof ICON_NAMES)[number]
 
