@@ -95,6 +95,10 @@ export function defaultsFor(fields: FieldMap): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, def] of Object.entries(fields)) {
     if (def.kind === 'repeater') out[key] = []
+    // A multi-select reference is validated as an array; the empty string the
+    // generic branch produced was rejected with 422, so a block like "Kontak
+    // cabang" could not be saved until someone ticked and unticked a branch.
+    else if (def.kind === 'reference') out[key] = def.multiple ? [] : ''
     else if ('default' in def && def.default !== undefined) out[key] = def.default
     else if (def.kind === 'boolean') out[key] = false
     else if (def.kind === 'number') out[key] = undefined
