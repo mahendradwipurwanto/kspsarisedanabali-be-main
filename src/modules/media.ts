@@ -96,6 +96,14 @@ mediaRouter.post(
     if (!['media', 'documents'].includes(folder)) throw new ApiError(400, 'Folder tidak dikenal.', 'bad_folder')
     if (!Buffer.isBuffer(req.body) || !req.body.length) throw new ApiError(400, 'Berkas kosong.', 'empty_file')
 
+    // The console refuses these before sending; repeated here so a client
+    // that skips the check cannot fill the bucket with 20 MB photos.
+    const isImage = contentType.startsWith('image/')
+    const maxMb = isImage ? 2 : 5
+    if (req.body.length > maxMb * 1024 * 1024) {
+      throw new ApiError(413, `Berkas terlalu besar: maksimal ${maxMb} MB untuk ${isImage ? 'gambar' : 'berkas'}.`, 'file_too_large')
+    }
+
     const saved = await putObject({ folder, filename, contentType, body: req.body })
     await audit(req, { action: 'upload', entity: 'media', summary: saved.key })
     res.json({ data: saved })
