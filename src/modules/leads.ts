@@ -2,7 +2,7 @@ import express, { Router } from 'express'
 import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, count } from 'drizzle-orm'
 import {
   publicLeadSchema, updateLeadSchema, profilingSessionSchema, normalisePhone,
-  calculateInstallment, jobApplicationSchema, type RateMethod,
+  calculateInstallment, jobApplicationSchema, isLeadClosed, type RateMethod,
 } from '../contracts/index.js'
 import { db, leads, leadEvents, products, branches, users, profilingSessions, jobApplications, jobs } from '../db/index.js'
 import {
@@ -363,11 +363,13 @@ leadRouter.patch(
       .limit(1)
     if (!existing) throw notFound('Data calon nasabah tidak ditemukan.')
 
-    // A rejection is final. Reopening one would quietly rewrite a decision
-    // someone already recorded, so the record turns read-only instead — the
-    // history stays readable, nothing more can be added to it.
-    if (existing.status === 'ditolak') {
-      throw new ApiError(409, 'Calon nasabah ini sudah ditolak dan tidak bisa ditindaklanjuti lagi.', 'lead_rejected')
+    // "Selesai" and "Ditolak" both close a case. Reopening one would quietly
+    // rewrite a decision somebody already recorded, so the record turns
+    // read-only instead — the history stays readable, nothing more can be
+    // added to it.
+    if (isLeadClosed(existing.status)) {
+      const said = existing.status === 'ditolak' ? 'ditolak' : 'selesai'
+      throw new ApiError(409, `Calon nasabah ini sudah ${said} dan tidak bisa ditindaklanjuti lagi.`, 'lead_closed')
     }
 
     if (body.assignedToId !== undefined && !req.auth!.permissions.includes('leads:assign')) {

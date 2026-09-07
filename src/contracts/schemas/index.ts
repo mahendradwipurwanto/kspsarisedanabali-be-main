@@ -287,6 +287,15 @@ export const LEAD_STATUS_LABELS: Record<(typeof LEAD_STATUSES)[number], string> 
   ditolak: 'Ditolak',
 }
 
+/**
+ * The statuses that close a case. Both record a decision somebody made, so the
+ * API refuses further changes to a lead sitting on one and the console stops
+ * offering the follow-up form. Anything still open stays editable.
+ */
+export const CLOSED_LEAD_STATUSES: readonly string[] = ['selesai', 'ditolak']
+
+export const isLeadClosed = (status: string): boolean => CLOSED_LEAD_STATUSES.includes(status)
+
 export const LEAD_PURPOSES = [
   { value: 'modal_usaha', label: 'Modal Usaha' },
   { value: 'renovasi_rumah', label: 'Renovasi Rumah' },
