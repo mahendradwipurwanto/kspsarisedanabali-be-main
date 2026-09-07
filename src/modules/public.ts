@@ -406,8 +406,15 @@ publicRouter.get(
     const key = String(req.query.key ?? '')
     if (!key || key.startsWith('cv/') || key.includes('..')) throw notFound('Berkas tidak ditemukan.')
 
-    const [row] = await db.select({ id: media.id }).from(media).where(eq(media.key, key)).limit(1)
-    if (!row) throw notFound('Berkas tidak ditemukan.')
+    // A key is servable when the media library holds it, or when a published
+    // document points at it. Documents (PDF, DOC) go straight to storage and
+    // never enter the library, so looking only at `media` refused every one of
+    // them and the download link answered 404.
+    const [[image], [doc]] = await Promise.all([
+      db.select({ id: media.id }).from(media).where(eq(media.key, key)).limit(1),
+      db.select({ id: documents.id }).from(documents).where(and(eq(documents.fileKey, key), eq(documents.isPublic, true))).limit(1),
+    ])
+    if (!image && !doc) throw notFound('Berkas tidak ditemukan.')
 
     // 10-minute signature; the LP caches the bytes for a year since keys are immutable.
     res.setHeader('Cache-Control', 'public, s-maxage=240')
