@@ -325,6 +325,55 @@ export const updateLeadSchema = z.object({
   note: z.string().max(2000).optional(),
 })
 
+/* ------------------------------ kritik & saran ----------------------------- */
+
+/**
+ * Feedback is not a lead. A lead wants to be called back and must leave a phone
+ * number; someone filing a complaint or an idea may want to stay anonymous, so
+ * every contact field here is optional and only the message is required.
+ */
+export const FEEDBACK_CATEGORIES = ['kritik', 'saran', 'pertanyaan', 'apresiasi'] as const
+export type FeedbackCategory = (typeof FEEDBACK_CATEGORIES)[number]
+
+export const FEEDBACK_CATEGORY_LABELS: Record<FeedbackCategory, string> = {
+  kritik: 'Kritik',
+  saran: 'Saran',
+  pertanyaan: 'Pertanyaan',
+  apresiasi: 'Apresiasi',
+}
+
+export const FEEDBACK_STATUSES = ['baru', 'dibaca', 'ditindaklanjuti', 'selesai'] as const
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number]
+
+export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
+  baru: 'Baru',
+  dibaca: 'Dibaca',
+  ditindaklanjuti: 'Ditindaklanjuti',
+  selesai: 'Selesai',
+}
+
+export const publicFeedbackSchema = z.object({
+  category: z.enum(FEEDBACK_CATEGORIES).default('saran'),
+  rating: z.number().int().min(1).max(5).optional(),
+  name: z.string().trim().max(120).optional().or(z.literal('')),
+  email: z.string().trim().email(EMAIL_ERROR).optional().or(z.literal('')),
+  phone: optionalPhoneSchema,
+  subject: z.string().trim().max(150).optional().or(z.literal('')),
+  message: z.string().trim().min(10, 'Tuliskan masukan Anda, minimal 10 karakter').max(4000),
+  branchId: idSchema.optional(),
+  sessionId: z.string().max(64).optional(),
+  // Same honeypot rule as the lead form: left unconstrained on purpose so a bot
+  // is never told which field gave it away. The handler drops it silently.
+  website: z.string().max(200).optional(),
+  turnstileToken: z.string().optional(),
+})
+export type PublicFeedback = z.infer<typeof publicFeedbackSchema>
+
+export const updateFeedbackSchema = z.object({
+  status: z.enum(FEEDBACK_STATUSES).optional(),
+  note: z.string().max(2000).optional(),
+})
+
 /* --------------------------------- profiling ------------------------------- */
 
 export const profilingAnswersSchema = z.object({

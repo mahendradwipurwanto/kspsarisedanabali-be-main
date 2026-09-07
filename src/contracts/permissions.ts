@@ -46,6 +46,11 @@ export const PERMISSIONS = {
   'leads:export': 'Mengunduh data calon nasabah ke Excel',
   'leads:delete': 'Menghapus data calon nasabah',
 
+  // Kritik & saran
+  'feedback:read': 'Membaca kritik & saran yang masuk',
+  'feedback:update': 'Mengubah status dan catatan kritik & saran',
+  'feedback:delete': 'Menghapus kritik & saran',
+
   // Administration
   'users:read': 'Melihat daftar pengguna',
   'users:write': 'Menambah dan mengubah pengguna',
@@ -77,6 +82,7 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
     label: 'Calon Nasabah (Leads)',
     permissions: ['leads:read:all', 'leads:read:branch', 'leads:update', 'leads:assign', 'leads:export', 'leads:delete'],
   },
+  { label: 'Kritik & Saran', permissions: ['feedback:read', 'feedback:update', 'feedback:delete'] },
   { label: 'Pengguna & Peran', permissions: ['users:read', 'users:write', 'users:delete', 'roles:read', 'roles:manage'] },
   { label: 'Sistem', permissions: ['analytics:read', 'settings:manage', 'redirects:manage', 'menus:manage', 'audit:read'] },
 ]
@@ -123,6 +129,7 @@ export const SYSTEM_ROLES = {
     description: 'Menindaklanjuti calon nasabah dari seluruh cabang dan membaca laporan.',
     permissions: [
       'leads:read:all', 'leads:update', 'leads:assign', 'leads:export',
+      'feedback:read', 'feedback:update',
       'analytics:read', 'branches:read', 'products:read', 'jobs:applications',
     ] as Permission[],
     locked: false,
@@ -136,7 +143,7 @@ export const SYSTEM_ROLES = {
   viewer: {
     name: 'Pengurus (Hanya Lihat)',
     description: 'Melihat laporan dan data tanpa bisa mengubah apa pun.',
-    permissions: ['analytics:read', 'leads:read:all', 'pages:read', 'posts:read', 'products:read', 'branches:read'] as Permission[],
+    permissions: ['analytics:read', 'leads:read:all', 'feedback:read', 'pages:read', 'posts:read', 'products:read', 'branches:read'] as Permission[],
     locked: false,
   },
 } as const

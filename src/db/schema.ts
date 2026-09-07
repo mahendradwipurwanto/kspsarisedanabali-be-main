@@ -454,6 +454,43 @@ export const stats = pgTable('stats', {
 
 /* ================================ LEADS & FUNNEL ============================== */
 
+/**
+ * Kritik & saran from the website's suggestion box.
+ *
+ * Kept apart from `leads` on purpose: a lead is someone asking to be called
+ * back and must leave a phone number, while feedback may be filed anonymously —
+ * every contact column here is nullable and only the message is required.
+ */
+export const feedback = pgTable(
+  'feedback',
+  {
+    id: id(),
+    category: varchar('category', { length: 20 }).notNull().default('saran'),
+    rating: integer('rating'),
+    name: varchar('name', { length: 160 }),
+    email: varchar('email', { length: 200 }),
+    phone: varchar('phone', { length: 40 }),
+    subject: varchar('subject', { length: 200 }),
+    message: text('message').notNull(),
+    branchId: uuid('branch_id').references(() => branches.id, { onDelete: 'set null' }),
+    status: varchar('status', { length: 20 }).notNull().default('baru'),
+    note: text('note'),
+    handledById: uuid('handled_by_id').references(() => users.id, { onDelete: 'set null' }),
+    handledAt: timestamp('handled_at', { withTimezone: true }),
+    source: varchar('source', { length: 30 }).notNull().default('feedback_form'),
+    sessionId: varchar('session_id', { length: 64 }),
+    referrer: text('referrer'),
+    ipHash: varchar('ip_hash', { length: 64 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('feedback_status_idx').on(t.status, t.createdAt),
+    index('feedback_created_idx').on(t.createdAt),
+  ],
+)
+
 export const leads = pgTable(
   'leads',
   {

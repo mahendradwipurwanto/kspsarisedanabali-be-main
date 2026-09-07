@@ -35,6 +35,7 @@ import { attachIp, errorHandler, notFoundHandler, responseDeadline } from './mid
 import { authRouter } from './modules/auth.js'
 import { publicRouter } from './modules/public.js'
 import { publicLeadRouter, leadRouter } from './modules/leads.js'
+import { publicFeedbackRouter, feedbackRouter } from './modules/feedback.js'
 import { pageRouter } from './modules/pages.js'
 import { mediaRouter } from './modules/media.js'
 import { userRouter, roleRouter, auditRouter } from './modules/users.js'
@@ -102,12 +103,14 @@ export function createApp(): Express {
   app.use('/v1/auth', authRouter)
   app.use('/v1/public', publicRouter)
   app.use('/v1/public', publicLeadRouter)
+  app.use('/v1/public', publicFeedbackRouter)
   app.use('/v1/track', trackRouter)
   app.use('/v1/cron', retentionRouter)
 
   app.use('/v1/pages', pageRouter)
   app.use('/v1/media', mediaRouter)
   app.use('/v1/leads', leadRouter)
+  app.use('/v1/feedback', feedbackRouter)
   app.use('/v1/users', userRouter)
   app.use('/v1/roles', roleRouter)
   app.use('/v1/audit', auditRouter)

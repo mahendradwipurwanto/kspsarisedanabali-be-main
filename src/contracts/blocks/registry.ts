@@ -10,6 +10,21 @@ import { field, fieldsToZod, defaultsFor, type FieldMap } from '../fields.js'
 
 export type BlockCategory = 'Utama' | 'Konten' | 'Produk' | 'Konversi' | 'Media'
 
+/**
+ * The palette every box in the organisation chart can be painted with.
+ *
+ * Named after what an editor sees rather than a token, and shared by the
+ * contract, the console editor and the website so the three cannot drift.
+ */
+export const ORG_TONES = [
+  { value: 'netral', label: 'Netral (putih)' },
+  { value: 'gelap', label: 'Gelap (navy)' },
+  { value: 'hijau', label: 'Hijau' },
+  { value: 'emas', label: 'Emas' },
+] as const
+
+export type OrgTone = (typeof ORG_TONES)[number]['value']
+
 export interface BlockDef {
   type: string
   label: string
@@ -286,6 +301,33 @@ export const BLOCKS = {
     },
   }),
 
+  feedback_form: def({
+    type: 'feedback_form',
+    label: 'Formulir Kritik & Saran',
+    description: 'Kotak saran online. Masukan yang dikirim masuk ke menu Kritik & Saran di konsol.',
+    category: 'Konversi',
+    icon: 'message',
+    headingLevel: 'h2',
+    fields: {
+      eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Suara anggota' }),
+      heading: field.text({ label: 'Judul bagian', required: true, max: 70, default: 'Kritik & Saran' }),
+      headingAccent: field.text({ label: 'Bagian judul yang diberi warna hijau', max: 40, help: 'Ditampilkan hijau di akhir judul.' }),
+      body: field.textarea({ label: 'Penjelasan singkat', max: 300, rows: 3, default: 'Sampaikan keluhan, usulan, atau apresiasi Anda. Semua masukan dibaca pengurus dan menjadi bahan perbaikan layanan.' }),
+      formTitle: field.text({ label: 'Judul di atas formulir', max: 40, default: 'Sampaikan Masukan' }),
+      // Anonymous by default: someone with a complaint about a member of staff
+      // will not file it if the form demands their name first.
+      askIdentity: field.boolean({ label: 'Tampilkan kolom nama dan kontak', default: true, help: 'Tetap opsional bagi pengirim, sehingga masukan boleh anonim.' }),
+      askBranch: field.boolean({ label: 'Tanyakan kantor yang dimaksud', default: true }),
+      askRating: field.boolean({ label: 'Tanyakan penilaian bintang 1–5', default: true }),
+      successMessage: field.textarea({ label: 'Pesan setelah terkirim', max: 240, rows: 2, default: 'Terima kasih. Masukan Anda sudah kami terima dan akan dibaca pengurus.' }),
+      note: field.text({ label: 'Catatan kecil di bawah tombol', max: 160, default: 'Masukan Anda boleh dikirim tanpa nama.' }),
+      points: field.repeater({
+        label: 'Poin penjelas di samping formulir', itemLabel: 'Poin', max: 4,
+        of: { title: field.text({ label: 'Judul poin', required: true, max: 50 }), body: field.text({ label: 'Penjelasan', max: 120 }) },
+      }),
+    },
+  }),
+
   profiling_cta: def({
     type: 'profiling_cta',
     label: 'Ajakan Profiling Nasabah',
@@ -422,6 +464,11 @@ export const BLOCKS = {
     },
   }),
 
+  /**
+ * The chart's colours are options, not decisions baked into the component: a
+ * koperasi that wants its board in green and its units in navy can say so
+ * without a deploy.
+ */
   org_chart: def({
     type: 'org_chart',
     label: 'Struktur Organisasi',
@@ -439,6 +486,7 @@ export const BLOCKS = {
         label: 'Kelompok jabatan', itemLabel: 'Kelompok', max: 10,
         of: {
           title: field.text({ label: 'Nama kelompok', required: true, max: 40, placeholder: 'Pengurus' }),
+          tone: field.select({ label: 'Warna kartu', options: [...ORG_TONES], default: 'netral' }),
           members: field.repeater({
             label: 'Anggota', itemLabel: 'Orang', min: 1, max: 20,
             of: { name: field.text({ label: 'Nama', required: true, max: 80 }), role: field.text({ label: 'Jabatan', max: 60 }), photo: field.image({ label: 'Foto' }) },
@@ -450,12 +498,16 @@ export const BLOCKS = {
       // the top, the operational units at the bottom — without asking an editor
       // to build a tree in nested repeaters.
       apex: field.text({ label: 'Kotak teratas', max: 40, default: 'Rapat Anggota', help: 'Pemegang kekuasaan tertinggi koperasi. Kosongkan bila tidak ingin ditampilkan.' }),
+      apexTone: field.select({ label: 'Warna kotak teratas', options: [...ORG_TONES], default: 'gelap' }),
       audit: field.text({ label: 'Pengawas internal', max: 40, default: 'SPI', help: 'Muncul sebagai kotak di samping garis, seperti pada bagan resmi. Kosongkan bila tidak ada.' }),
+      auditTone: field.select({ label: 'Warna kotak pengawas internal', options: [...ORG_TONES], default: 'emas' }),
       operationsLead: field.text({ label: 'Pimpinan operasional', max: 40, default: 'Kepala Cabang' }),
+      leadTone: field.select({ label: 'Warna kotak pimpinan operasional', options: [...ORG_TONES], default: 'gelap' }),
       units: field.repeater({
         label: 'Unit kerja', itemLabel: 'Unit', max: 6,
         of: {
           title: field.text({ label: 'Nama unit', required: true, max: 40, placeholder: 'Kabag Dana' }),
+          tone: field.select({ label: 'Warna judul unit', options: [...ORG_TONES], default: 'hijau' }),
           roles: field.repeater({
             label: 'Jabatan di bawahnya', itemLabel: 'Jabatan', max: 10,
             of: { name: field.text({ label: 'Nama jabatan', required: true, max: 40, placeholder: 'Kasir' }) },
