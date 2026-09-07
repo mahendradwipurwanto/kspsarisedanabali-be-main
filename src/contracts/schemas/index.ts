@@ -409,6 +409,28 @@ export const blockInputSchema = z.object({
   isVisible: z.boolean().default(true),
 })
 
+/**
+ * A moment, written either way.
+ *
+ * The console's date fields are `<input type="date">`, which yields
+ * "2026-09-07" — a value `z.string().datetime()` rejects outright, so saving a
+ * news item with a publish date failed with "publishedAt: invalid datetime".
+ * A plain date is a legitimate answer to "when does this go out", so it is
+ * accepted and widened to midnight UTC, which reads as the same calendar day
+ * across Indonesia.
+ *
+ * It yields a Date rather than a string on purpose: the value goes straight
+ * into a timestamp column, and a string there fails at the driver rather than
+ * at the door — which is what turned a mistyped date into a 500.
+ */
+export const dateTimeSchema = z
+  .union([z.string(), z.date()])
+  .refine(
+    (v) => v instanceof Date || /^\d{4}-\d{2}-\d{2}$/.test(v) || !Number.isNaN(Date.parse(v)),
+    'Tanggal tidak dikenali',
+  )
+  .transform((v) => (v instanceof Date ? v : new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00.000Z` : v)))
+
 /** Page slugs follow the slug rule, except the home page, which is "/". */
 export const pageSlugSchema = slugSchema.or(z.literal('/'))
 
@@ -418,7 +440,7 @@ export const pageSchema = z.object({
   status: z.enum(PAGE_STATUSES).default('draft'),
   seo: seoSchema.default({}),
   blocks: z.array(blockInputSchema).default([]),
-  publishedAt: z.string().datetime().nullable().optional(),
+  publishedAt: dateTimeSchema.nullable().optional(),
 })
 
 /* --------------------------------- products -------------------------------- */
@@ -498,7 +520,7 @@ export const postSchema = z.object({
   coverImage: z.string().optional().or(z.literal('')),
   categoryId: idSchema.optional().nullable(),
   status: z.enum(PAGE_STATUSES).default('draft'),
-  publishedAt: z.string().datetime().nullable().optional(),
+  publishedAt: dateTimeSchema.nullable().optional(),
   seo: seoSchema.default({}),
 })
 
@@ -513,7 +535,7 @@ export const jobSchema = z.object({
   location: z.string().max(160).optional().or(z.literal('')),
   description: z.string().optional().or(z.literal('')),
   requirements: z.array(z.string()).optional(),
-  closesAt: z.string().datetime().nullable().optional(),
+  closesAt: dateTimeSchema.nullable().optional(),
   isActive: z.boolean().default(true),
   seo: seoSchema.default({}),
 })

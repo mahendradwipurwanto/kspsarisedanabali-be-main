@@ -45,19 +45,51 @@ export const ALLOWED_BY_FOLDER: Record<string, string[]> = {
 /** `cv/*` holds applicants' personal data and must never be publicly readable. */
 export const PRIVATE_FOLDERS = new Set(['cv'])
 
+/**
+ * Names a phone or a camera gives a file on its own. They say nothing about the
+ * content, they are long, and they end up as the visible name of a cover image
+ * or a download, so they are replaced rather than carried through.
+ */
+const DEFAULT_NAMES = [
+  /^(img|dsc|dscn|pxl|photo|picture|image|gambar|foto|video|vid|mov|pic)(-\d+)*$/,
+  /^(screenshot|screen-?shot|tangkapan-?layar|capture|snip|snipped-?image)\b/,
+  /^whatsapp-(image|video|audio|document)\b/,
+  /^(img|vid)-\d{8}-wa\d+$/,
+  /^(fb|ig|line|signal|telegram)[-_]/,
+  /^(untitled|unnamed|noname|new-?doc(ument)?|document|doc|scan(ned)?|file|download|copy(-of)?|salinan|tanpa-judul)[-_]?\d*$/,
+  /^\d+$/,
+  /^[0-9a-f]{8}-?[0-9a-f]{4}/, // a uuid or a hash
+]
+
+/** What a file is called when its own name tells us nothing. */
+const GENERIC: Record<string, string> = { media: 'gambar', documents: 'dokumen', cv: 'cv' }
+
+/**
+ * The stored name for an upload.
+ *
+ * Never the name the file arrived with: that is a camera's IMG_20260907_101112
+ * or a phone's "WhatsApp Image 2026-09-07 at 10.11.12", which is noise in the
+ * media library and, for a document, becomes the name a visitor's browser saves.
+ * A name that describes the file is kept and shortened; anything that reads as
+ * a device default is swapped for a plain one. The ULID keeps it unique and
+ * sortable either way.
+ */
 export function buildKey(folder: string, filename: string) {
   const now = new Date()
-  const safe = filename
+  const generic = GENERIC[folder] ?? 'berkas'
+  const stem = filename
     .toLowerCase()
     .replace(/\.[^.]+$/, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
+  const safe = !stem || stem.length < 3 || DEFAULT_NAMES.some((re) => re.test(stem)) ? generic : stem.slice(0, 40).replace(/-+$/, '')
   const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')).toLowerCase() : ''
   const yyyy = now.getUTCFullYear()
   const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
   const prefix = folder === 'media' ? `media/${yyyy}/${mm}` : folder
-  return `${prefix}/${ulid()}-${safe || 'file'}${ext}`
+  return `${prefix}/${ulid()}-${safe}${ext}`
 }
 
 export async function presignUpload(opts: {
