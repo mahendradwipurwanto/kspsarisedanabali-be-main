@@ -13,6 +13,7 @@ import { hashIp } from '../lib/auth.js'
 import { presignUpload, putObject } from '../lib/storage.js'
 import { env } from '../lib/env.js'
 import { recommendProduct } from './recommend.js'
+import { buildLeadWorkbook } from '../lib/lead-workbook.js'
 
 export const publicLeadRouter: Router = Router()
 export const leadRouter: Router = Router()
@@ -362,6 +363,13 @@ leadRouter.patch(
       .limit(1)
     if (!existing) throw notFound('Data calon nasabah tidak ditemukan.')
 
+    // A rejection is final. Reopening one would quietly rewrite a decision
+    // someone already recorded, so the record turns read-only instead — the
+    // history stays readable, nothing more can be added to it.
+    if (existing.status === 'ditolak') {
+      throw new ApiError(409, 'Calon nasabah ini sudah ditolak dan tidak bisa ditindaklanjuti lagi.', 'lead_rejected')
+    }
+
     if (body.assignedToId !== undefined && !req.auth!.permissions.includes('leads:assign')) {
       throw forbidden('Anda tidak punya hak menugaskan petugas.')
     }
@@ -389,37 +397,34 @@ leadRouter.patch(
   }),
 )
 
+/**
+ * The follow-up list as a workbook rather than a CSV.
+ *
+ * Staff open this in Excel and work from it: a CSV loses the column widths, the
+ * rupiah formatting and the header, and Indonesian names arrive mangled unless
+ * the reader knows to import rather than open. A real .xlsx carries all of it.
+ */
 leadRouter.get(
-  '/export/csv',
+  '/export/xlsx',
   requirePermission('leads:export'),
   asyncHandler(async (req, res) => {
     const rows = await db
-      .select({ lead: leads, productName: products.name, branchName: branches.name })
+      .select({ lead: leads, productName: products.name, branchName: branches.name, assignedToName: users.name })
       .from(leads)
       .leftJoin(products, eq(products.id, leads.productId))
       .leftJoin(branches, eq(branches.id, leads.branchId))
+      .leftJoin(users, eq(users.id, leads.assignedToId))
       .where(and(isNull(leads.deletedAt), branchScope(req.auth!)))
       .orderBy(desc(leads.createdAt))
       .limit(10_000)
 
-    const esc = (v: unknown) => {
-      const s = v == null ? '' : String(v)
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-    }
-    const header = ['Tanggal', 'Nama', 'WhatsApp', 'Email', 'Minat', 'Produk', 'Cabang', 'Nominal', 'Tenor', 'Estimasi Angsuran', 'Sumber', 'Status', 'Pesan']
-    const body = rows.map((r) =>
-      [
-        new Date(r.lead.createdAt).toLocaleString('id-ID'),
-        r.lead.name, r.lead.phone, r.lead.email, r.lead.interest, r.productName, r.branchName,
-        r.lead.amount, r.lead.tenorMonths, r.lead.estimatedInstallment, r.lead.source, r.lead.status, r.lead.message,
-      ].map(esc).join(','),
-    )
+    const buffer = await buildLeadWorkbook(rows)
 
-    await audit(req, { action: 'export', entity: 'lead', summary: `${rows.length} baris diekspor` })
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-    res.setHeader('Content-Disposition', `attachment; filename="leads-${new Date().toISOString().slice(0, 10)}.csv"`)
-    // BOM so Excel opens UTF-8 Indonesian names correctly.
-    res.send('﻿' + [header.join(','), ...body].join('\n'))
+    await audit(req, { action: 'export', entity: 'lead', summary: `${rows.length} baris diekspor ke Excel` })
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="calon-nasabah-${new Date().toISOString().slice(0, 10)}.xlsx"`)
+    res.setHeader('Content-Length', String(buffer.length))
+    res.end(buffer)
   }),
 )
 
