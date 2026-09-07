@@ -591,6 +591,7 @@ export const BLOCKS = {
       heading: field.text({ label: 'Judul bagian', max: 70 }),
       category: field.select({
         label: 'Kategori yang ditampilkan',
+        help: 'Selain "Semua kategori", pertanyaan di kategori lain tidak ikut tampil di blok ini.',
         options: [
           { value: 'all', label: 'Semua kategori' },
           { value: 'umum', label: 'Umum' },
