@@ -493,10 +493,39 @@ export const BLOCKS = {
           }),
         },
       }),
-      // The tiers above and below the three governance groups. Each is a single
-      // box, so the chart can be drawn as a real hierarchy — Rapat Anggota at
-      // the top, the operational units at the bottom — without asking an editor
-      // to build a tree in nested repeaters.
+      /**
+       * The chart itself: levels top to bottom, edited in the console's own
+       * chart-shaped editor rather than through these nested repeaters.
+       *
+       * The five props below it are what charts looked like before levels
+       * existed. They are still read — a page saved earlier renders exactly as
+       * it did — and the editor converts them the first time it is touched.
+       */
+      levels: field.repeater({
+        label: 'Tingkatan bagan', itemLabel: 'Tingkat', max: 12,
+        of: {
+          kind: field.select({ label: 'Bentuk', options: [{ value: 'kotak', label: 'Satu kotak' }, { value: 'kolom', label: 'Beberapa kolom' }], default: 'kotak' }),
+          title: field.text({ label: 'Teks kotak', max: 60 }),
+          tone: field.select({ label: 'Warna kotak', options: [...ORG_TONES], default: 'gelap' }),
+          style: field.select({ label: 'Gaya kolom', options: [{ value: 'kartu', label: 'Kartu berisi nama' }, { value: 'daftar', label: 'Judul + daftar jabatan' }], default: 'kartu' }),
+          aside: field.text({ label: 'Kotak di samping garis', max: 40 }),
+          asideTone: field.select({ label: 'Warna kotak samping', options: [...ORG_TONES], default: 'emas' }),
+          columns: field.repeater({
+            label: 'Kolom', itemLabel: 'Kolom', max: 8,
+            of: {
+              title: field.text({ label: 'Judul kolom', max: 40 }),
+              tone: field.select({ label: 'Warna judul', options: [...ORG_TONES], default: 'netral' }),
+              members: field.repeater({
+                label: 'Isi kolom', itemLabel: 'Baris', max: 20,
+                of: { name: field.text({ label: 'Nama atau jabatan', max: 80 }), role: field.text({ label: 'Keterangan', max: 60 }) },
+              }),
+            },
+          }),
+        },
+      }),
+
+      // Legacy shape, kept so charts saved before "Tingkatan bagan" existed
+      // keep rendering. The editor migrates them on first change.
       apex: field.text({ label: 'Kotak teratas', max: 40, default: 'Rapat Anggota', help: 'Pemegang kekuasaan tertinggi koperasi. Kosongkan bila tidak ingin ditampilkan.' }),
       apexTone: field.select({ label: 'Warna kotak teratas', options: [...ORG_TONES], default: 'gelap' }),
       audit: field.text({ label: 'Pengawas internal', max: 40, default: 'SPI', help: 'Muncul sebagai kotak di samping garis, seperti pada bagan resmi. Kosongkan bila tidak ada.' }),
