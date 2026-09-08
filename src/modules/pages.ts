@@ -196,6 +196,7 @@ pageRouter.patch(
         slug: body.slug ?? existing.slug,
         seo: body.seo ?? existing.seo,
         status: body.status ?? existing.status,
+        showInFooter: body.showInFooter ?? existing.showInFooter,
         updatedById: req.auth!.sub,
         updatedAt: new Date(),
       })

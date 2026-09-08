@@ -344,7 +344,7 @@ publicRouter.get(
   '/sitemap-data',
   asyncHandler(async (_req, res) => {
     const [pageRows, productRows, postRows, branchRows, jobRows] = await Promise.all([
-      db.select({ slug: pages.slug, title: pages.title, isSystem: pages.isSystem, updatedAt: pages.updatedAt }).from(pages).where(publishedFilter(pages)),
+      db.select({ slug: pages.slug, title: pages.title, isSystem: pages.isSystem, showInFooter: pages.showInFooter, updatedAt: pages.updatedAt }).from(pages).where(publishedFilter(pages)),
       db.select({ slug: products.slug, category: products.category, updatedAt: products.updatedAt }).from(products).where(and(eq(products.isActive, true), isNull(products.deletedAt))),
       db.select({ slug: posts.slug, updatedAt: posts.updatedAt }).from(posts).where(publishedFilter(posts)),
       db.select({ slug: branches.slug, updatedAt: branches.updatedAt }).from(branches).where(eq(branches.isActive, true)),

@@ -138,6 +138,14 @@ export const pages = pgTable(
     seo: jsonb('seo').$type<Record<string, unknown>>().notNull().default({}),
     /** Locked pages back a fixed route (e.g. `/`) and cannot be deleted. */
     isSystem: boolean('is_system').notNull().default(false),
+    /**
+     * Listed in the footer's bottom row, beside the copyright.
+     *
+     * That row used to be every published page that was not a fixed route, so
+     * anything an editor made — a campaign page, a test — appeared there by
+     * itself. It is asked for now.
+     */
+    showInFooter: boolean('show_in_footer').notNull().default(false),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
     updatedById: uuid('updated_by_id').references(() => users.id, { onDelete: 'set null' }),

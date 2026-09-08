@@ -449,6 +449,8 @@ export const pageSchema = z.object({
   seo: seoSchema.default({}),
   blocks: z.array(blockInputSchema).default([]),
   publishedAt: dateTimeSchema.nullable().optional(),
+  /** Listed in the footer's bottom row. Asked for, not assumed. */
+  showInFooter: z.boolean().default(false),
 })
 
 /* --------------------------------- products -------------------------------- */
