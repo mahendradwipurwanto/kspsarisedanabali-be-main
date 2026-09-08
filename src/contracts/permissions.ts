@@ -37,6 +37,9 @@ export const PERMISSIONS = {
   'faqs:write': 'Mengubah tanya jawab',
   'testimonials:write': 'Mengubah testimoni',
   'documents:write': 'Mengelola laporan & dokumen resmi',
+  // Pencapaian used to sit behind settings:manage, which meant editing an
+  // achievement figure required the same authority as changing the whole site.
+  'stats:write': 'Mengubah angka pencapaian koperasi',
 
   // Leads
   'leads:read:all': 'Melihat calon nasabah dari SEMUA cabang',
@@ -77,7 +80,7 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
   { label: 'Produk', permissions: ['products:read', 'products:write', 'products:delete'] },
   { label: 'Kantor Cabang', permissions: ['branches:read', 'branches:write'] },
   { label: 'Karir', permissions: ['jobs:read', 'jobs:write', 'jobs:applications'] },
-  { label: 'Konten Lain', permissions: ['faqs:write', 'testimonials:write', 'documents:write'] },
+  { label: 'Konten Lain', permissions: ['faqs:write', 'testimonials:write', 'documents:write', 'stats:write'] },
   {
     label: 'Calon Nasabah (Leads)',
     permissions: ['leads:read:all', 'leads:read:branch', 'leads:update', 'leads:assign', 'leads:export', 'leads:delete'],
@@ -109,7 +112,7 @@ export const SYSTEM_ROLES = {
       'media:read', 'media:upload',
       'posts:read', 'posts:write', 'posts:publish',
       'products:read', 'products:write',
-      'branches:read', 'faqs:write', 'testimonials:write', 'documents:write',
+      'branches:read', 'faqs:write', 'testimonials:write', 'documents:write', 'stats:write',
       'jobs:read', 'jobs:write', 'analytics:read',
     ] as Permission[],
     locked: false,
