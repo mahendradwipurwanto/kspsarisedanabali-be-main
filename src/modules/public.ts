@@ -154,12 +154,17 @@ publicRouter.get(
     const where = and(publishedFilter(posts), categoryId ? eq(posts.categoryId, categoryId) : undefined)
     const [{ total }] = await db.select({ total: count() }).from(posts).where(where)
 
+    // The article body is left out of the list: it is the largest column on the
+    // table and no card draws it. `?full=1` asks for it anyway, which is what a
+    // full-content RSS feed needs and the only caller that sends it.
+    const card = {
+      id: posts.id, title: posts.title, slug: posts.slug, excerpt: posts.excerpt,
+      coverImage: posts.coverImage, publishedAt: posts.publishedAt, readMinutes: posts.readMinutes,
+      categoryName: postCategories.name, categorySlug: postCategories.slug,
+    }
+
     const rows = await db
-      .select({
-        id: posts.id, title: posts.title, slug: posts.slug, excerpt: posts.excerpt,
-        coverImage: posts.coverImage, publishedAt: posts.publishedAt, readMinutes: posts.readMinutes,
-        categoryName: postCategories.name, categorySlug: postCategories.slug,
-      })
+      .select(req.query.full === '1' ? { ...card, content: posts.content } : card)
       .from(posts)
       .leftJoin(postCategories, eq(postCategories.id, posts.categoryId))
       .where(where)
