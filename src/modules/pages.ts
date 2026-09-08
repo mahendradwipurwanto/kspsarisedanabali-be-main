@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { and, asc, desc, eq, ilike, isNull, lt, sql, count } from 'drizzle-orm'
 import { pageSchema, validateBlockProps, getBlock, scoreSeo, canPublish } from '../contracts/index.js'
 import { db, pages, pageBlocks, pageRevisions, pagePreviews, users } from '../db/index.js'
-import { asyncHandler, validate, requireAuth, requirePermission, notFound, ApiError, audit, validated, param } from '../middleware/index.js'
+import { asyncHandler, validate, requireAuth, requirePermission, notFound, forbidden, ApiError, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
 // Page writes revalidate the shared `pages` tag as well as the slug: the home
 // page is stored as "/" but fetched by the site as "home", so a slug-only tag
@@ -179,6 +179,23 @@ pageRouter.patch(
     if (body.slug && body.slug !== existing.slug && existing.isSystem) {
       throw new ApiError(400, 'Alamat halaman sistem tidak bisa diubah.', 'system_page')
     }
+
+    /**
+     * Publishing is a separate permission, so it has to be checked here too.
+     *
+     * `POST /:id/publish` asks for `pages:publish`, but this route accepted a
+     * status of "published" on `pages:update` alone — which made the whole
+     * permission decorative and let the Kontributor role, whose entire purpose
+     * is writing drafts somebody else signs off, put a page on the website by
+     * changing a dropdown. Withdrawing a published page is treated the same
+     * way: taking the site down is no smaller a decision than putting it up.
+     */
+    if (body.status && body.status !== existing.status
+        && (body.status === 'published' || existing.status === 'published')
+        && !req.auth!.permissions.includes('pages:publish')) {
+      throw forbidden('Membutuhkan hak akses: pages:publish')
+    }
+
     if (body.blocks) assertBlocksValid(body.blocks)
 
     // Snapshot before mutating, so "kembalikan versi sebelumnya" always has a target.

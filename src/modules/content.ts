@@ -4,7 +4,7 @@ import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 import { z, type ZodTypeAny } from 'zod'
 import { productSchema, branchSchema, postSchema, jobSchema, slugSchema } from '../contracts/index.js'
 import { db, products, branches, posts, postCategories, jobs, jobApplications, faqs, testimonials, documents, stats, settings, redirects, menus } from '../db/index.js'
-import { asyncHandler, validate, requireAuth, requirePermission, notFound, audit, validated, param } from '../middleware/index.js'
+import { asyncHandler, validate, requireAuth, requirePermission, notFound, forbidden, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
 import { invalidateSettingsCache } from './public.js'
 
@@ -172,6 +172,30 @@ postRouter.post(
     res.json({ data: row })
   }),
 )
+/**
+ * The same guard the pages router applies: a status of "published" is the
+ * publish permission's business, whichever route sets it.
+ *
+ * Without this the dedicated publish endpoint below was decorative — anyone
+ * with `posts:write` could put a story on the website by changing the status
+ * dropdown, which is exactly what the Kontributor role is meant not to do.
+ * Unpublishing counts too: taking a story down is no smaller a decision.
+ */
+const guardPostPublish: RequestHandler = asyncHandler(async (req, _res, next) => {
+  const status = (req.body as { status?: string } | undefined)?.status
+  if (!status || req.auth!.permissions.includes('posts:publish')) return next()
+
+  const id = (req.params as Record<string, string>).id
+  const [existing] = id ? await db.select({ status: posts.status }).from(posts).where(eq(posts.id, id)).limit(1) : []
+  const was = existing?.status ?? 'draft'
+  if (status !== was && (status === 'published' || was === 'published')) {
+    throw forbidden('Membutuhkan hak akses: posts:publish')
+  }
+  next()
+})
+
+postRouter.post('/', guardPostPublish)
+postRouter.patch('/:id', guardPostPublish)
 postRouter.use(
   crud({
     table: posts,
@@ -301,7 +325,9 @@ statRouter.use(
       sortOrder: z.number().int().default(0),
       isActive: z.boolean().default(true),
     }),
-    permissions: { read: ['pages:read'], write: ['settings:manage'] },
+    // `settings:manage` is still accepted so roles written before `stats:write`
+    // existed keep working; new roles can be given the narrow one alone.
+    permissions: { read: ['pages:read'], write: ['stats:write', 'settings:manage'] },
     searchColumn: stats.label,
     orderBy: asc(stats.sortOrder),
     entity: 'stats',
