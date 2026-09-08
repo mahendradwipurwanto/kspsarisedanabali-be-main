@@ -2,10 +2,11 @@ import { Router, type RequestHandler } from 'express'
 import { and, asc, desc, eq, ilike, isNull, sql, count, type SQL } from 'drizzle-orm'
 import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 import { z, type ZodTypeAny } from 'zod'
-import { productSchema, branchSchema, postSchema, jobSchema, slugSchema } from '../contracts/index.js'
+import { productSchema, branchSchema, postSchema, jobSchema, slugSchema, updateJobApplicationSchema } from '../contracts/index.js'
 import { db, products, branches, posts, postCategories, jobs, jobApplications, faqs, testimonials, documents, stats, settings, redirects, menus } from '../db/index.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, forbidden, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
+import { presignDownload } from '../lib/storage.js'
 import { invalidateSettingsCache } from './public.js'
 
 /**
@@ -227,6 +228,103 @@ postCategoryRouter.use(
 
 export const jobRouter: Router = Router()
 jobRouter.use(guard)
+
+/**
+ * Every application, newest first, whichever vacancy it answers.
+ *
+ * Registered before the crud router, whose `GET /:id` would otherwise read
+ * "applications" as a job id. The per-job list below stays: it is what the
+ * vacancy screen links to.
+ *
+ * A CV is personal data and is never included — the list carries only what is
+ * needed to triage, and the file itself is fetched one at a time through the
+ * signed-URL route, which leaves a trail.
+ */
+jobRouter.get(
+  '/applications',
+  requirePermission('jobs:applications'),
+  asyncHandler(async (req, res) => {
+    const q = validated<Record<string, string>>(req)
+    const page = Math.max(Number(q.page ?? 1), 1)
+    const limit = Math.min(Number(q.limit ?? 50), 200)
+
+    const where = and(
+      q.status ? eq(jobApplications.status, q.status) : undefined,
+      q.jobId ? eq(jobApplications.jobId, q.jobId) : undefined,
+    )
+
+    const [{ total }] = await db.select({ total: count() }).from(jobApplications).where(where)
+    const rows = await db
+      .select({
+        id: jobApplications.id, jobId: jobApplications.jobId, name: jobApplications.name,
+        email: jobApplications.email, phone: jobApplications.phone, bio: jobApplications.bio,
+        status: jobApplications.status, createdAt: jobApplications.createdAt,
+        purgeAfter: jobApplications.purgeAfter, jobTitle: jobs.title,
+      })
+      .from(jobApplications)
+      .leftJoin(jobs, eq(jobs.id, jobApplications.jobId))
+      .where(where)
+      .orderBy(desc(jobApplications.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit)
+
+    res.json({ data: rows, meta: { page, limit, total: Number(total), totalPages: Math.ceil(Number(total) / limit) } })
+  }),
+)
+
+/** How many have not been looked at, for the badge on the menu. */
+jobRouter.get(
+  '/applications/summary',
+  requirePermission('jobs:applications'),
+  asyncHandler(async (_req, res) => {
+    const rows = await db.select({ status: jobApplications.status, n: count() }).from(jobApplications).groupBy(jobApplications.status)
+    res.json({
+      data: {
+        byStatus: Object.fromEntries(rows.map((r) => [r.status, Number(r.n)])),
+        total: rows.reduce((n, r) => n + Number(r.n), 0),
+      },
+    })
+  }),
+)
+
+/**
+ * The applicant's CV, as a link that stops working.
+ *
+ * CVs live under the private `cv/` prefix and are never proxied like an image,
+ * so this mints a five-minute signature and records who asked for it. Reading
+ * somebody's CV is the most sensitive thing this console does; it should leave
+ * a trail, which a public URL never would.
+ */
+jobRouter.get(
+  '/applications/:id/cv',
+  requirePermission('jobs:applications'),
+  asyncHandler(async (req, res) => {
+    const [row] = await db.select().from(jobApplications).where(eq(jobApplications.id, param(req, 'id'))).limit(1)
+    if (!row) throw notFound('Lamaran tidak ditemukan.')
+
+    await audit(req, { action: 'read', entity: 'job-application', entityId: row.id, summary: `CV ${row.name} diunduh` })
+    res.json({ data: { url: await presignDownload(row.cvKey, 300), expiresIn: 300 } })
+  }),
+)
+
+jobRouter.patch(
+  '/applications/:id',
+  requirePermission('jobs:applications'),
+  validate(updateJobApplicationSchema),
+  asyncHandler(async (req, res) => {
+    const body = req.body as import('zod').infer<typeof updateJobApplicationSchema>
+    const [row] = await db
+      .update(jobApplications)
+      .set({ status: body.status })
+      .where(eq(jobApplications.id, param(req, 'id')))
+      .returning()
+    if (!row) throw notFound('Lamaran tidak ditemukan.')
+
+    await audit(req, { action: 'update', entity: 'job-application', entityId: row.id, summary: `${row.name} → ${body.status}` })
+    res.json({ data: row })
+  }),
+)
+
 jobRouter.get(
   '/:id/applications',
   requirePermission('jobs:applications'),
