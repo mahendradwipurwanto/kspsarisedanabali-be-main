@@ -327,6 +327,27 @@ leadRouter.get(
   }),
 )
 
+/**
+ * Who a lead can be handed to.
+ *
+ * Its own route rather than the users list, because assigning is a marketing
+ * job and `users:read` is an administrative one — a Marketing role holds
+ * `leads:assign` and has no business reading the staff directory, its roles or
+ * its login history. Only what a picker needs comes back.
+ */
+leadRouter.get(
+  '/assignees',
+  requirePermission('leads:assign'),
+  asyncHandler(async (_req, res) => {
+    const rows = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(and(eq(users.isActive, true), isNull(users.deletedAt)))
+      .orderBy(asc(users.name))
+    res.json({ data: rows })
+  }),
+)
+
 leadRouter.get(
   '/:id',
   requirePermission('leads:read:all', 'leads:read:branch'),
@@ -396,6 +417,30 @@ leadRouter.patch(
 
     await audit(req, { action: 'update', entity: 'lead', entityId: existing.id, summary: `Status → ${body.status ?? existing.status}` })
     res.json({ data: updated })
+  }),
+)
+
+/**
+ * Remove a lead.
+ *
+ * Soft, like every other record here: an enquiry deleted in haste is still
+ * someone who asked to be called back, and the retention job clears it on the
+ * same schedule as the rest. The branch scope applies, so branch staff can only
+ * remove their own — deletion must not be a way to reach a row you cannot read.
+ */
+leadRouter.delete(
+  '/:id',
+  requirePermission('leads:delete'),
+  asyncHandler(async (req, res) => {
+    const [row] = await db
+      .update(leads)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(leads.id, param(req, 'id')), isNull(leads.deletedAt), branchScope(req.auth!)))
+      .returning({ id: leads.id, name: leads.name })
+    if (!row) throw notFound('Data calon nasabah tidak ditemukan.')
+
+    await audit(req, { action: 'delete', entity: 'lead', entityId: row.id, summary: `${row.name} dihapus` })
+    res.json({ ok: true })
   }),
 )
 
