@@ -561,6 +561,31 @@ export const jobApplicationSchema = z.object({
   website: z.string().max(200).optional(),
 })
 
+/**
+ * How far an application has got.
+ *
+ * Deliberately short. A koperasi hiring two or three people a year needs to
+ * know who has been looked at and who has been called; a full applicant
+ * tracking pipeline would be a form nobody fills in honestly.
+ */
+export const JOB_APPLICATION_STATUSES = ['baru', 'ditinjau', 'dipanggil', 'diterima', 'ditolak'] as const
+export type JobApplicationStatus = (typeof JOB_APPLICATION_STATUSES)[number]
+
+export const JOB_APPLICATION_STATUS_LABELS: Record<JobApplicationStatus, string> = {
+  baru: 'Baru',
+  ditinjau: 'Sudah ditinjau',
+  dipanggil: 'Dipanggil wawancara',
+  diterima: 'Diterima',
+  ditolak: 'Tidak lolos',
+}
+
+/** The two that end it. Kept open for editing — an applicant may be reconsidered. */
+export const isJobApplicationClosed = (status: string) => status === 'diterima' || status === 'ditolak'
+
+export const updateJobApplicationSchema = z.object({
+  status: z.enum(JOB_APPLICATION_STATUSES),
+})
+
 /* ---------------------------------- media ---------------------------------- */
 
 export const presignSchema = z.object({
