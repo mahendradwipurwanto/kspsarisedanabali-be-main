@@ -491,6 +491,29 @@ export const feedback = pgTable(
   ],
 )
 
+/**
+ * What has been done about one piece of feedback, in order.
+ *
+ * The same shape as `lead_events`, and for the same reason: a single `note`
+ * column holds only the last thing anyone wrote, so the reasoning behind a
+ * status was lost the moment somebody else touched it. `feedback.note` stays as
+ * the current note; this is the record of how it got there.
+ */
+export const feedbackEvents = pgTable(
+  'feedback_events',
+  {
+    id: id(),
+    feedbackId: uuid('feedback_id').notNull().references(() => feedback.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 30 }).notNull(), // status_change | note
+    fromValue: varchar('from_value', { length: 60 }),
+    toValue: varchar('to_value', { length: 60 }),
+    note: text('note'),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('feedback_events_feedback_idx').on(t.feedbackId, t.createdAt)],
+)
+
 export const leads = pgTable(
   'leads',
   {

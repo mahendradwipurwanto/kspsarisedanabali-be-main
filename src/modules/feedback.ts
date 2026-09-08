@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { and, count, desc, eq, gte, ilike, isNull, lte, or, sql } from 'drizzle-orm'
-import { publicFeedbackSchema, updateFeedbackSchema, normalisePhone } from '../contracts/index.js'
-import { db, feedback, branches, users } from '../db/index.js'
+import { publicFeedbackSchema, updateFeedbackSchema, normalisePhone, isFeedbackClosed } from '../contracts/index.js'
+import { db, feedback, feedbackEvents, branches, users } from '../db/index.js'
 import {
   asyncHandler, validate, requireAuth, requirePermission, notFound,
-  ipRateLimit, audit, validated, param,
+  ipRateLimit, audit, validated, param, ApiError,
 } from '../middleware/index.js'
 import { hashIp } from '../lib/auth.js'
 
@@ -42,6 +42,8 @@ publicFeedbackRouter.post(
         ipHash: req.clientIp ? hashIp(req.clientIp) : null,
       })
       .returning({ id: feedback.id })
+
+    await db.insert(feedbackEvents).values({ feedbackId: row!.id, type: 'status_change', toValue: 'baru', note: 'Masuk dari website' })
 
     res.status(201).json({ ok: true, data: { id: row!.id } })
   }),
@@ -117,12 +119,53 @@ feedbackRouter.get(
   }),
 )
 
+feedbackRouter.get(
+  '/:id',
+  requirePermission('feedback:read'),
+  asyncHandler(async (req, res) => {
+    const [row] = await db
+      .select({ row: feedback, branchName: branches.name, handledByName: users.name })
+      .from(feedback)
+      .leftJoin(branches, eq(branches.id, feedback.branchId))
+      .leftJoin(users, eq(users.id, feedback.handledById))
+      .where(and(eq(feedback.id, param(req, 'id')), isNull(feedback.deletedAt)))
+      .limit(1)
+    if (!row) throw notFound('Masukan')
+
+    const timeline = await db
+      .select({ event: feedbackEvents, userName: users.name })
+      .from(feedbackEvents)
+      .leftJoin(users, eq(users.id, feedbackEvents.userId))
+      .where(eq(feedbackEvents.feedbackId, row.row.id))
+      .orderBy(desc(feedbackEvents.createdAt))
+
+    res.json({
+      data: { ...row.row, branchName: row.branchName, handledByName: row.handledByName },
+      timeline: timeline.map((t) => ({ ...t.event, userName: t.userName })),
+    })
+  }),
+)
+
 feedbackRouter.patch(
   '/:id',
   requirePermission('feedback:update'),
   validate(updateFeedbackSchema),
   asyncHandler(async (req, res) => {
     const body = req.body as import('zod').infer<typeof updateFeedbackSchema>
+
+    const [existing] = await db
+      .select()
+      .from(feedback)
+      .where(and(eq(feedback.id, param(req, 'id')), isNull(feedback.deletedAt)))
+      .limit(1)
+    if (!existing) throw notFound('Masukan')
+
+    // Selesai closes it, the way Selesai and Ditolak close a lead: the history
+    // stays readable, nothing more can be added to it.
+    if (isFeedbackClosed(existing.status)) {
+      throw new ApiError(409, 'Masukan ini sudah selesai dan tidak bisa diubah lagi.', 'feedback_closed')
+    }
+
     const patch: Partial<typeof feedback.$inferInsert> = { updatedAt: new Date() }
     if (body.status !== undefined) {
       patch.status = body.status
@@ -132,14 +175,16 @@ feedbackRouter.patch(
     }
     if (body.note !== undefined) patch.note = body.note || null
 
-    const [row] = await db
-      .update(feedback)
-      .set(patch)
-      .where(and(eq(feedback.id, param(req, 'id')), isNull(feedback.deletedAt)))
-      .returning()
-    if (!row) throw notFound('Masukan')
+    const [row] = await db.update(feedback).set(patch).where(eq(feedback.id, existing.id)).returning()
 
-    await audit(req, { action: 'update', entity: 'feedback', entityId: row.id, summary: body.status ?? 'catatan' })
+    const events: (typeof feedbackEvents.$inferInsert)[] = []
+    if (body.status !== undefined && body.status !== existing.status) {
+      events.push({ feedbackId: existing.id, type: 'status_change', fromValue: existing.status, toValue: body.status, userId: req.auth!.sub })
+    }
+    if (body.note) events.push({ feedbackId: existing.id, type: 'note', note: body.note, userId: req.auth!.sub })
+    if (events.length) await db.insert(feedbackEvents).values(events)
+
+    await audit(req, { action: 'update', entity: 'feedback', entityId: row!.id, summary: body.status ?? 'catatan' })
     res.json({ data: row })
   }),
 )

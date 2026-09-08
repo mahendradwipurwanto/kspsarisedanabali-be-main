@@ -2,7 +2,7 @@ import { Router, type RequestHandler } from 'express'
 import { and, asc, desc, eq, ilike, isNull, sql, count, type SQL } from 'drizzle-orm'
 import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 import { z, type ZodTypeAny } from 'zod'
-import { productSchema, branchSchema, postSchema, jobSchema } from '../contracts/index.js'
+import { productSchema, branchSchema, postSchema, jobSchema, slugSchema } from '../contracts/index.js'
 import { db, products, branches, posts, postCategories, jobs, jobApplications, faqs, testimonials, documents, stats, settings, redirects, menus } from '../db/index.js'
 import { asyncHandler, validate, requireAuth, requirePermission, notFound, audit, validated, param } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
@@ -190,7 +190,10 @@ postCategoryRouter.use(guard)
 postCategoryRouter.use(
   crud({
     table: postCategories,
-    schema: z.object({ name: z.string().min(2).max(120), slug: z.string().min(1).max(120), description: z.string().optional() }),
+    // The slug goes into /berita?kategori=… so it has to be a slug: a free
+    // string here accepted "kegiatan sosial", "Kegiatan-Sosial", even
+    // "kegiatan/sosial", each of which breaks the address it ends up in.
+    schema: z.object({ name: z.string().min(2).max(120), slug: slugSchema, description: z.string().optional() }),
     permissions: { read: ['posts:read'], write: ['posts:write'] },
     searchColumn: postCategories.name,
     orderBy: asc(postCategories.name),

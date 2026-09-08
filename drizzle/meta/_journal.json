@@ -43,6 +43,13 @@
       "when": 1788759138432,
       "tag": "0005_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788842482515,
+      "tag": "0006_feedback_events",
+      "breakpoints": true
     }
   ]
 }

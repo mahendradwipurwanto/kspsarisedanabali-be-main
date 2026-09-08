@@ -361,6 +361,14 @@ export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
   selesai: 'Selesai',
 }
 
+/**
+ * The status that closes a piece of feedback. Same rule as a lead: once someone
+ * has recorded that it is done, reopening it would quietly rewrite that.
+ */
+export const CLOSED_FEEDBACK_STATUSES: readonly string[] = ['selesai']
+
+export const isFeedbackClosed = (status: string): boolean => CLOSED_FEEDBACK_STATUSES.includes(status)
+
 export const publicFeedbackSchema = z.object({
   category: z.enum(FEEDBACK_CATEGORIES).default('saran'),
   rating: z.number().int().min(1).max(5).optional(),
