@@ -38,7 +38,36 @@ export interface BlockDef {
   fields: FieldMap
 }
 
-const def = <T extends BlockDef>(b: T) => b
+/**
+ * Fields every block carries, whatever it draws.
+ *
+ * Tag Manager identifies a section by a CSS selector, and a selector is only
+ * stable if someone gave the section a name. Generated class names change with
+ * every build, so a marketer measuring "clicks in the testimonial band" had
+ * nothing to point a trigger at. These two put that name in the editor's hands.
+ *
+ * They are added to every block by `def()` rather than repeated in thirty
+ * definitions, so a block added later gets them without anyone remembering to.
+ */
+export const TRACKING_FIELDS: FieldMap = {
+  gtmClass: field.text({
+    label: 'Kelas CSS untuk GTM',
+    max: 120,
+    placeholder: 'promo-simpanan',
+    help: 'Nama untuk bagian ini di Google Tag Manager. Ditulis sebagai kelas pada pembungkus bagian, dengan awalan dari Pengaturan → SEO (bawaan: ksp-). Pisahkan dengan spasi untuk lebih dari satu.',
+  }),
+  gtmId: field.text({
+    label: 'ID elemen untuk GTM',
+    max: 60,
+    placeholder: 'blok-testimoni',
+    help: 'Opsional. Menjadi id HTML bagian ini, sekaligus sasaran tautan #anchor. Harus unik dalam satu halaman.',
+  }),
+}
+
+/** Keys of {@link TRACKING_FIELDS}, for a form that groups them apart. */
+export const TRACKING_KEYS = Object.keys(TRACKING_FIELDS)
+
+const def = <T extends BlockDef>(b: T): T => ({ ...b, fields: { ...b.fields, ...TRACKING_FIELDS } })
 
 export const BLOCKS = {
   page_header: def({
@@ -826,4 +855,32 @@ export function validateBlockProps(type: string, props: unknown) {
 export function defaultPropsFor(type: string): Record<string, unknown> {
   const block = getBlock(type)
   return block ? defaultsFor(block.fields) : {}
+}
+
+/**
+ * The wrapper attributes a block's tracking fields ask for.
+ *
+ * Returns null when the editor named nothing, so the page emits no extra
+ * element at all: an empty div around every band would be a permanent cost paid
+ * for a feature almost no block uses.
+ *
+ * The prefix is applied here rather than typed by the editor, so one container
+ * rule can match every named section and a rename of the prefix reaches them
+ * all. A name that already carries it is left alone rather than doubled.
+ */
+export function trackingAttrs(
+  props: Record<string, unknown>,
+  prefix = 'ksp-',
+): { className: string; id?: string } | null {
+  const safe = (v: unknown) => String(v ?? '').trim().toLowerCase().replace(/[^a-z0-9_ -]/g, '')
+
+  const classes = safe(props.gtmClass)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((name) => (prefix && name.startsWith(prefix) ? name : `${prefix}${name}`))
+
+  const id = safe(props.gtmId).replace(/\s+/g, '-') || undefined
+  if (!classes.length && !id) return null
+
+  return { className: classes.join(' '), id }
 }

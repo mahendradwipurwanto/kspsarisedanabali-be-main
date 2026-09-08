@@ -335,3 +335,159 @@ export function mediaSrc(value: string | null | undefined, opts: { publicBase?: 
   if (opts.publicBase) return `${opts.publicBase.replace(/\/$/, '')}/${value}`
   return `${opts.proxyBase ?? ''}/api/media/${encodeURIComponent(value)}`
 }
+
+/* ────────────────────────── SEO infrastructure ─────────────────────────── */
+
+/**
+ * Pengaturan → SEO, the technical half.
+ *
+ * Every switch here is honoured by a real route on the website — robots.txt,
+ * sitemap.xml, rss.xml and the JSON-LD in the page head. Nothing is decorative:
+ * a setting that changed nothing would be worse than no setting at all, because
+ * an editor would believe they had turned something off.
+ */
+export interface SeoTechSettings {
+  /* robots.txt */
+  /** Off puts `noindex` on the whole site and answers robots.txt with Disallow: /. */
+  indexable: boolean
+  /** Paths refused to every crawler, on top of the built-in ones. */
+  robotsDisallow: string[]
+  /** Paths allowed back in, for a file inside an otherwise closed folder. */
+  robotsAllow: string[]
+  /** Seconds a crawler is asked to wait between requests. 0 omits the line. */
+  crawlDelay: number
+  /** Appended to robots.txt verbatim, for a directive this form does not model. */
+  robotsExtra: string
+
+  /* sitemap.xml */
+  sitemapEnabled: boolean
+  /** Announce the sitemap from robots.txt. */
+  sitemapInRobots: boolean
+  sitemapPages: boolean
+  sitemapPosts: boolean
+  sitemapProducts: boolean
+  sitemapBranches: boolean
+  sitemapJobs: boolean
+
+  /* rss.xml */
+  rssEnabled: boolean
+  /** How many of the newest posts the feed carries. */
+  rssLimit: number
+  /** Feed title and description; empty falls back to the site's own. */
+  rssTitle: string
+  rssDescription: string
+  /** Whole article HTML in the feed, not just the excerpt. */
+  rssFullContent: boolean
+
+  /* AI crawlers */
+  /**
+   * What the model trainers and answer engines are told. `allow` writes nothing
+   * — the site is open by default — `block` writes a Disallow for each known
+   * agent, `custom` blocks only the ones named in `aiCrawlersBlocked`.
+   */
+  aiCrawlers: 'allow' | 'block' | 'custom'
+  aiCrawlersBlocked: string[]
+
+  /* structured data */
+  schemaEnabled: boolean
+  /** The organisation's schema.org type. FinancialService earns the richer card. */
+  schemaType: 'FinancialService' | 'Organization' | 'LocalBusiness' | 'CreditUnion'
+  /** Emit the WebSite node, which is what a sitelinks search box hangs off. */
+  schemaWebsite: boolean
+  /** Declare /berita?cari= as the site's search action. */
+  schemaSearchAction: boolean
+  /** Profiles to claim as the organisation's own, beyond the footer's social links. */
+  schemaSameAs: string[]
+  /** Extra JSON-LD, one object or an array, added to every page as-is. */
+  schemaExtra: string
+}
+
+/** Crawlers that exist to train or answer with someone else's content. */
+export const AI_CRAWLERS = [
+  { agent: 'GPTBot', label: 'GPTBot (OpenAI, pelatihan model)' },
+  { agent: 'OAI-SearchBot', label: 'OAI-SearchBot (pencarian ChatGPT)' },
+  { agent: 'ChatGPT-User', label: 'ChatGPT-User (kunjungan atas permintaan pengguna)' },
+  { agent: 'ClaudeBot', label: 'ClaudeBot (Anthropic)' },
+  { agent: 'Claude-User', label: 'Claude-User (kunjungan atas permintaan pengguna)' },
+  { agent: 'PerplexityBot', label: 'PerplexityBot' },
+  { agent: 'Google-Extended', label: 'Google-Extended (pelatihan Gemini)' },
+  { agent: 'Applebot-Extended', label: 'Applebot-Extended (pelatihan Apple)' },
+  { agent: 'Bytespider', label: 'Bytespider (ByteDance)' },
+  { agent: 'CCBot', label: 'CCBot (Common Crawl)' },
+  { agent: 'meta-externalagent', label: 'meta-externalagent (Meta)' },
+  { agent: 'Amazonbot', label: 'Amazonbot' },
+] as const
+
+export const DEFAULT_SEO_TECH: SeoTechSettings = {
+  indexable: true,
+  robotsDisallow: [],
+  robotsAllow: [],
+  crawlDelay: 0,
+  robotsExtra: '',
+
+  sitemapEnabled: true,
+  sitemapInRobots: true,
+  sitemapPages: true,
+  sitemapPosts: true,
+  sitemapProducts: true,
+  sitemapBranches: true,
+  sitemapJobs: true,
+
+  rssEnabled: true,
+  rssLimit: 30,
+  rssTitle: '',
+  rssDescription: '',
+  rssFullContent: false,
+
+  aiCrawlers: 'allow',
+  aiCrawlersBlocked: [],
+
+  schemaEnabled: true,
+  schemaType: 'FinancialService',
+  schemaWebsite: true,
+  schemaSearchAction: false,
+  schemaSameAs: [],
+  schemaExtra: '',
+}
+
+/* ──────────────────────────── tag manager ──────────────────────────────── */
+
+/**
+ * Pengaturan → SEO → Google Tag Manager.
+ *
+ * The container id lives in the database rather than an environment variable so
+ * the koperasi's own marketing team can point the site at a new container
+ * without a deploy. Nothing secret belongs here: every value is published in
+ * the page source, and the settings endpoint is public.
+ */
+export interface AnalyticsSettings {
+  /** GTM-XXXXXXX. Empty loads no container. */
+  gtmId: string
+  /** G-XXXXXXXXXX. Only used when no container is set — GTM should own GA4. */
+  gaId: string
+  /**
+   * Deny analytics and advertising storage until the visitor agrees. Leave on
+   * unless the container itself already implements consent.
+   */
+  consentMode: boolean
+  /** Pushed onto the dataLayer before the container loads, on every page. */
+  dataLayer: { key: string; value: string }[]
+  /**
+   * Prefix put in front of every block's tracking class, so one container rule
+   * (`[class^="ksp-"]`) can catch the lot.
+   */
+  classPrefix: string
+}
+
+export const DEFAULT_ANALYTICS: AnalyticsSettings = {
+  gtmId: '',
+  gaId: '',
+  consentMode: false,
+  dataLayer: [],
+  classPrefix: 'ksp-',
+}
+
+/** GTM-XXXXXXX, the only shape Google issues. */
+export const GTM_ID_RULE = /^GTM-[A-Z0-9]{4,10}$/
+/** G-XXXXXXXXXX, a GA4 measurement id. */
+export const GA_ID_RULE = /^G-[A-Z0-9]{6,12}$/
