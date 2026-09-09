@@ -485,7 +485,8 @@ export const BLOCKS = {
       category: field.reference({
         label: 'Jenis dokumen',
         to: 'document-category',
-        help: 'Kosongkan untuk menampilkan semua jenis — rak sampul lalu memberi tab per jenis. Jenisnya dikelola di menu Kategori Dokumen.',
+        multiple: true,
+        help: 'Centang jenis yang ditampilkan; kosongkan untuk semua. Jenis yang dipilih tampil sebagai pil penyaring di atas rak. Jenisnya dikelola di menu Kategori Dokumen.',
       }),
       layout: field.select({
         label: 'Tampilan',
