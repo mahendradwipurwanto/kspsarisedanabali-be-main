@@ -57,6 +57,13 @@
       "when": 1788872886651,
       "tag": "0007_page_show_in_footer",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788962648452,
+      "tag": "0008_document_cover_image",
+      "breakpoints": true
     }
   ]
 }

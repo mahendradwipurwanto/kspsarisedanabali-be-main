@@ -401,6 +401,7 @@ documentRouter.use(
       year: z.number().int().min(1990).max(2100).optional(),
       fileKey: z.string().min(1),
       fileSize: z.number().int().optional(),
+      coverImage: z.string().optional().or(z.literal('')),
       isPublic: z.boolean().default(true),
       sortOrder: z.number().int().default(0),
     }),

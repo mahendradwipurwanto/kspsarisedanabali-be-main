@@ -301,7 +301,7 @@ publicRouter.get(
       .where(and(eq(documents.isPublic, true), category ? eq(documents.category, category) : undefined))
       .orderBy(desc(documents.year), asc(documents.sortOrder))
     cache(res)
-    res.json({ data: rows.map((r) => ({ ...r, url: publicUrl(r.fileKey) })) })
+    res.json({ data: rows.map((r) => ({ ...r, url: publicUrl(r.fileKey), coverImage: publicUrl(r.coverImage ?? '') })) })
   }),
 )
 

@@ -490,6 +490,15 @@ export const BLOCKS = {
         ],
         default: 'all',
       }),
+      layout: field.select({
+        label: 'Tampilan',
+        options: [
+          { value: 'shelf', label: 'Rak sampul — kartu dengan gambar sampul, tahun, dan judul' },
+          { value: 'list', label: 'Daftar ringkas — satu baris per berkas' },
+        ],
+        default: 'shelf',
+        help: 'Rak sampul menampilkan tab per jenis dokumen bila "Semua dokumen" dipilih. Dokumen tanpa sampul tetap tampil dengan penanda.',
+      }),
     },
   }),
 

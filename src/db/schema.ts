@@ -446,6 +446,8 @@ export const documents = pgTable('documents', {
   year: integer('year'),
   fileKey: text('file_key').notNull(),
   fileSize: bigint('file_size', { mode: 'number' }),
+  /** Optional cover artwork (media key) — a report is shelved like a book, by its cover. */
+  coverImage: text('cover_image'),
   isPublic: boolean('is_public').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: createdAt(),
