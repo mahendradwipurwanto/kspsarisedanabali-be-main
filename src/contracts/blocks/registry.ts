@@ -479,16 +479,13 @@ export const BLOCKS = {
     fields: {
       eyebrow: field.text({ label: 'Label kecil di atas', max: 40, default: 'Unduhan' }),
       heading: field.text({ label: 'Judul bagian', max: 70 }),
-      category: field.select({
+      // The kinds are rows the koperasi manages under Kategori Dokumen, so the
+      // block picks from them rather than from a list frozen here. The value
+      // is the category's slug; empty (or the older "all") shows every kind.
+      category: field.reference({
         label: 'Jenis dokumen',
-        options: [
-          { value: 'all', label: 'Semua dokumen' },
-          { value: 'laporan', label: 'Laporan tahunan' },
-          { value: 'legalitas', label: 'Legalitas & perizinan' },
-          { value: 'keuangan', label: 'Laporan keuangan' },
-          { value: 'lainnya', label: 'Lainnya' },
-        ],
-        default: 'all',
+        to: 'document-category',
+        help: 'Kosongkan untuk menampilkan semua jenis — rak sampul lalu memberi tab per jenis. Jenisnya dikelola di menu Kategori Dokumen.',
       }),
       layout: field.select({
         label: 'Tampilan',

@@ -20,7 +20,7 @@ export type FieldDef =
   | { kind: 'link'; label: string; help?: string; required?: boolean; placeholder?: string; max?: number; default?: string }
   | { kind: 'icon'; label: string; help?: string; required?: boolean; max?: number; default?: string }
   | { kind: 'color'; label: string; help?: string; required?: boolean; max?: number; default?: string }
-  | { kind: 'reference'; label: string; help?: string; to: 'product' | 'post' | 'branch' | 'page'; multiple?: boolean }
+  | { kind: 'reference'; label: string; help?: string; to: 'product' | 'post' | 'branch' | 'page' | 'document-category'; multiple?: boolean }
   | { kind: 'repeater'; label: string; help?: string; itemLabel?: string; min?: number; max?: number; of: FieldMap }
 
 export type FieldMap = Record<string, FieldDef>

@@ -3,8 +3,8 @@ import { and, asc, desc, eq, ilike, isNull, sql, count, type SQL } from 'drizzle
 import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 import { z, type ZodTypeAny } from 'zod'
 import { productSchema, branchSchema, postSchema, jobSchema, slugSchema, updateJobApplicationSchema } from '../contracts/index.js'
-import { db, products, branches, posts, postCategories, jobs, jobApplications, faqs, testimonials, documents, stats, settings, redirects, menus } from '../db/index.js'
-import { asyncHandler, validate, requireAuth, requirePermission, notFound, forbidden, audit, validated, param } from '../middleware/index.js'
+import { db, products, branches, posts, postCategories, jobs, jobApplications, faqs, testimonials, documents, documentCategories, stats, settings, redirects, menus } from '../db/index.js'
+import { asyncHandler, validate, requireAuth, requirePermission, notFound, forbidden, audit, validated, param, ApiError } from '../middleware/index.js'
 import { revalidateLp } from '../lib/revalidate.js'
 import { presignDownload } from '../lib/storage.js'
 import { invalidateSettingsCache } from './public.js'
@@ -390,14 +390,63 @@ testimonialRouter.use(
   }),
 )
 
+export const documentCategoryRouter: Router = Router()
+documentCategoryRouter.use(guard)
+/**
+ * A kind that still holds documents cannot go: the files would keep a slug
+ * nothing resolves, and vanish from every shelf without anyone deleting them.
+ * The message says how many and what to do instead.
+ */
+documentCategoryRouter.delete(
+  '/:id',
+  requirePermission('documents:write'),
+  asyncHandler(async (req, _res, next) => {
+    const [cat] = await db.select({ slug: documentCategories.slug }).from(documentCategories).where(eq(documentCategories.id, param(req, 'id'))).limit(1)
+    if (!cat) return next()
+    const [{ n }] = await db.select({ n: count() }).from(documents).where(eq(documents.category, cat.slug))
+    if (Number(n) > 0) {
+      throw new ApiError(409, `Masih ada ${n} dokumen berjenis ini. Pindahkan dokumennya ke jenis lain dulu, atau kosongkan.`, 'category_in_use')
+    }
+    next()
+  }),
+)
+documentCategoryRouter.use(
+  crud({
+    table: documentCategories,
+    schema: z.object({
+      name: z.string().min(2).max(120),
+      slug: slugSchema,
+      icon: z.string().max(40).optional().or(z.literal('')),
+      description: z.string().optional().or(z.literal('')),
+      sortOrder: z.number().int().default(0),
+    }),
+    permissions: { read: ['pages:read'], write: ['documents:write'] },
+    searchColumn: documentCategories.name,
+    orderBy: asc(documentCategories.sortOrder),
+    entity: 'document-categories',
+    tags: () => ['documents'],
+  }),
+)
+
+/** A document's kind must be one that exists; the console offers only those, this is for everything else. */
+const guardDocumentCategory: RequestHandler = asyncHandler(async (req, _res, next) => {
+  const slug = (req.body as { category?: string } | undefined)?.category
+  if (!slug) return next()
+  const [cat] = await db.select({ id: documentCategories.id }).from(documentCategories).where(eq(documentCategories.slug, slug)).limit(1)
+  if (!cat) throw new ApiError(422, 'Data yang dikirim belum lengkap atau tidak valid.', 'validation_error', [{ field: 'category', message: 'Jenis dokumen tidak dikenal. Tambahkan dulu di menu Kategori Dokumen.' }])
+  next()
+})
+
 export const documentRouter: Router = Router()
 documentRouter.use(guard)
+documentRouter.post('/', guardDocumentCategory)
+documentRouter.patch('/:id', guardDocumentCategory)
 documentRouter.use(
   crud({
     table: documents,
     schema: z.object({
       title: z.string().min(2).max(250),
-      category: z.enum(['laporan', 'legalitas', 'keuangan', 'lainnya']).default('laporan'),
+      category: slugSchema.default('laporan'),
       year: z.number().int().min(1990).max(2100).optional(),
       fileKey: z.string().min(1),
       fileSize: z.number().int().optional(),

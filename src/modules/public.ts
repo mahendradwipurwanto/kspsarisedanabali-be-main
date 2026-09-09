@@ -3,7 +3,7 @@ import { and, asc, desc, eq, isNull, isNotNull, lte, ne, or, sql, count } from '
 import { publicUrl, presignDownload } from '../lib/storage.js'
 import { asyncHandler, notFound, param } from '../middleware/index.js'
 import {
-  db, pages, pageBlocks, products, branches, posts, postCategories, jobs, faqs,
+  db, pages, pageBlocks, products, branches, posts, postCategories, jobs, faqs, documentCategories,
   testimonials, documents, stats, settings, redirects, menus, media, pagePreviews,
 } from '../db/index.js'
 
@@ -295,13 +295,21 @@ publicRouter.get(
   '/documents',
   asyncHandler(async (req, res) => {
     const category = String(req.query.category ?? '')
+    // The kind rides along with each document — name, icon, order — so the
+    // shelf can build its tabs from one request and never shows a slug.
     const rows = await db
-      .select()
+      .select({ doc: documents, categoryName: documentCategories.name, categoryIcon: documentCategories.icon, categoryOrder: documentCategories.sortOrder })
       .from(documents)
+      .leftJoin(documentCategories, eq(documentCategories.slug, documents.category))
       .where(and(eq(documents.isPublic, true), category ? eq(documents.category, category) : undefined))
-      .orderBy(desc(documents.year), asc(documents.sortOrder))
+      .orderBy(asc(documentCategories.sortOrder), desc(documents.year), asc(documents.sortOrder))
     cache(res)
-    res.json({ data: rows.map((r) => ({ ...r, url: publicUrl(r.fileKey), coverImage: publicUrl(r.coverImage ?? '') })) })
+    res.json({
+      data: rows.map((r) => ({
+        ...r.doc, url: publicUrl(r.doc.fileKey), coverImage: publicUrl(r.doc.coverImage ?? ''),
+        categoryName: r.categoryName, categoryIcon: r.categoryIcon, categoryOrder: r.categoryOrder,
+      })),
+    })
   }),
 )
 

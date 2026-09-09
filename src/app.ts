@@ -43,7 +43,7 @@ import { trackRouter, analyticsRouter } from './modules/analytics.js'
 import { retentionRouter } from './modules/retention.js'
 import {
   productRouter, branchRouter, postRouter, postCategoryRouter, jobRouter, faqRouter,
-  testimonialRouter, documentRouter, statRouter, redirectRouter, settingsRouter, menuRouter,
+  testimonialRouter, documentRouter, documentCategoryRouter, statRouter, redirectRouter, settingsRouter, menuRouter,
 } from './modules/content.js'
 
 /**
@@ -124,6 +124,7 @@ export function createApp(): Express {
   app.use('/v1/faqs', faqRouter)
   app.use('/v1/testimonials', testimonialRouter)
   app.use('/v1/documents', documentRouter)
+  app.use('/v1/document-categories', documentCategoryRouter)
   app.use('/v1/stats', statRouter)
   app.use('/v1/redirects', redirectRouter)
   app.use('/v1/settings', settingsRouter)

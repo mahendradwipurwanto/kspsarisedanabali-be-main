@@ -439,6 +439,26 @@ export const testimonials = pgTable('testimonials', {
   createdAt: createdAt(),
 })
 
+/**
+ * The kinds a document can be — Laporan Tahunan, Laporan Keuangan, and
+ * whatever the koperasi adds. Documents point at a kind by its slug, which is
+ * also what the website filters by, so renaming a kind never orphans a file.
+ */
+export const documentCategories = pgTable(
+  'document_categories',
+  {
+    id: id(),
+    name: varchar('name', { length: 120 }).notNull(),
+    slug: varchar('slug', { length: 60 }).notNull(),
+    /** Icon name shared with the console picker and the website's tab strip. */
+    icon: varchar('icon', { length: 40 }),
+    description: text('description'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('document_categories_slug_uq').on(t.slug)],
+)
+
 export const documents = pgTable('documents', {
   id: id(),
   title: varchar('title', { length: 250 }).notNull(),
