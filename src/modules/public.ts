@@ -291,6 +291,23 @@ publicRouter.get(
   }),
 )
 
+/**
+ * The document kinds on their own, so the shelf can list every kind the block
+ * chose — including one that has nothing on it yet — rather than only the
+ * kinds it can infer from the documents that happen to exist.
+ */
+publicRouter.get(
+  '/document-categories',
+  asyncHandler(async (_req, res) => {
+    const rows = await db
+      .select({ id: documentCategories.id, name: documentCategories.name, slug: documentCategories.slug, icon: documentCategories.icon, sortOrder: documentCategories.sortOrder })
+      .from(documentCategories)
+      .orderBy(asc(documentCategories.sortOrder), asc(documentCategories.name))
+    cache(res)
+    res.json({ data: rows })
+  }),
+)
+
 publicRouter.get(
   '/documents',
   asyncHandler(async (req, res) => {
