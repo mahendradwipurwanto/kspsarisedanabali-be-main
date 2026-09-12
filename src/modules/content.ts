@@ -101,21 +101,23 @@ function crud(opts: CrudOptions): Router {
     '/:id',
     requirePermission(...(opts.permissions.delete ?? opts.permissions.write)),
     asyncHandler(async (req, res) => {
+      // Read before deleting: the row's own tags are what the website caches
+      // it under. Busting only the entity name left a deleted document kind on
+      // the Laporan Keuangan page, which reads kinds under the "documents" tag.
+      const [row] = await db.select().from(opts.table).where(and(eq(t.id!, param(req, 'id')), notDeleted)).limit(1)
+      if (!row) throw notFound()
       if (opts.softDelete) {
         const patch: Record<string, unknown> = { deletedAt: new Date() }
         // A soft-deleted row keeps its slug, and the slug is unique, so the
         // address could never be used again: an editor who deleted a product
         // and recreated it was told the slug was taken by a row they could no
         // longer see. Deleting releases it.
-        if (t.slug) {
-          const [row] = await db.select().from(opts.table).where(eq(t.id!, param(req, 'id'))).limit(1)
-          const slug = (row as Record<string, unknown> | undefined)?.slug
-          if (typeof slug === 'string') patch.slug = `${slug.slice(0, 90)}__dihapus__${Date.now()}`
-        }
+        const slug = (row as Record<string, unknown>).slug
+        if (t.slug && typeof slug === 'string') patch.slug = `${slug.slice(0, 90)}__dihapus__${Date.now()}`
         await db.update(opts.table).set(patch as never).where(eq(t.id!, param(req, 'id')))
       } else await db.delete(opts.table).where(eq(t.id!, param(req, 'id')))
       await audit(req, { action: 'delete', entity: opts.entity, entityId: param(req, 'id') })
-      const refresh = await revalidateLp([opts.entity])
+      const refresh = await revalidateLp(opts.tags?.(row as Record<string, unknown>) ?? [opts.entity])
       res.json({ ok: true, refreshed: refresh.ok, refreshError: refresh.reason })
     }),
   )
@@ -212,6 +214,25 @@ postRouter.use(
 
 export const postCategoryRouter: Router = Router()
 postCategoryRouter.use(guard)
+/**
+ * A category that still labels news cannot go — the same rule the document
+ * kinds have. The database would quietly null the posts' category and the
+ * label would vanish from every story without anyone deleting it.
+ */
+postCategoryRouter.delete(
+  '/:id',
+  requirePermission('posts:write'),
+  asyncHandler(async (req, _res, next) => {
+    const [{ n }] = await db
+      .select({ n: count() })
+      .from(posts)
+      .where(and(eq(posts.categoryId, param(req, 'id')), isNull(posts.deletedAt)))
+    if (Number(n) > 0) {
+      throw new ApiError(409, `Masih ada ${n} berita berkategori ini. Pindahkan beritanya ke kategori lain dulu, atau kosongkan kategorinya.`, 'category_in_use')
+    }
+    next()
+  }),
+)
 postCategoryRouter.use(
   crud({
     table: postCategories,
@@ -422,7 +443,8 @@ documentCategoryRouter.use(
     }),
     permissions: { read: ['pages:read'], write: ['documents:write'] },
     searchColumn: documentCategories.name,
-    orderBy: asc(documentCategories.sortOrder),
+    // Newest first in the console; the website orders its tabs by sortOrder.
+    orderBy: desc(documentCategories.createdAt),
     entity: 'document-categories',
     tags: () => ['documents'],
   }),
@@ -456,7 +478,8 @@ documentRouter.use(
     }),
     permissions: { read: ['pages:read'], write: ['documents:write'] },
     searchColumn: documents.title,
-    orderBy: desc(documents.year),
+    // Newest upload first, so the report just added is the first row.
+    orderBy: desc(documents.createdAt),
     entity: 'documents',
   }),
 )
